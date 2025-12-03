@@ -1,3 +1,4 @@
+
 export enum TaskStatus {
   TODO = 'To Do',
   IN_PROGRESS = 'In Progress',
@@ -11,11 +12,18 @@ export enum TaskPriority {
   HIGH = 'High'
 }
 
+export interface Reaction {
+  emoji: string;
+  count: number;
+  userReacted: boolean;
+}
+
 export interface Comment {
   id: string;
   text: string;
   author: string;
   createdAt: number;
+  reactions?: Record<string, Reaction>; // Key is emoji char
 }
 
 export interface Task {
@@ -29,7 +37,7 @@ export interface Task {
   tags: string[];
   comments?: Comment[];
   createdAt: number;
-  estimatedTime?: number; // New field for Feature 6
+  estimatedTime?: number; 
 }
 
 export interface CreateTaskDTO {
@@ -53,4 +61,23 @@ export interface AssigneeRecommendation {
   taskId: string;
   suggestedAssignee: string;
   reason: string;
+}
+
+// Automation Types
+export interface AutomationRule {
+  id: string;
+  name: string;
+  triggerType: 'STATUS_CHANGE'; // Extendable later
+  triggerValue: string; // e.g., 'Done'
+  actionType: 'SET_PRIORITY' | 'ADD_COMMENT' | 'ASSIGN_USER';
+  actionValue: string;
+  isActive: boolean;
+}
+
+// Documentation Types
+export interface ProjectDoc {
+  id: string;
+  title: string;
+  content: string; // Markdown
+  updatedAt: number;
 }

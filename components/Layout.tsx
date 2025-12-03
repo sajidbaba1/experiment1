@@ -1,8 +1,9 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import AiAssistant from './AiAssistant';
 import { Task } from '../types';
 
-export type ViewType = 'board' | 'list' | 'reports';
+export type ViewType = 'board' | 'list' | 'timeline' | 'reports' | 'my-tasks' | 'docs';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -16,8 +17,9 @@ interface LayoutProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onExportCSV: () => void;
-  onGenerateSprint: () => void; // Feature 7
-  tasks: Task[]; // Required for Chatbot context
+  onGenerateSprint: () => void;
+  onOpenAutomations: () => void; // New prop
+  tasks: Task[];
 }
 
 const QUOTES = [
@@ -41,6 +43,7 @@ const Layout: React.FC<LayoutProps> = ({
   onSearchChange,
   onExportCSV,
   onGenerateSprint,
+  onOpenAutomations,
   tasks
 }) => {
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
@@ -76,50 +79,62 @@ const Layout: React.FC<LayoutProps> = ({
     setIsMobileMenuOpen(false);
   }
 
+  const NavItem = ({ view, label, icon }: { view: ViewType, label: string, icon: React.ReactNode }) => (
+    <button 
+      onClick={() => handleNavClick(view)}
+      className={`w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg mb-1 transition-all duration-200 group relative ${currentView === view ? 'bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white'}`}
+    >
+       <span className={`transition-colors ${currentView === view ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`}>
+         {icon}
+       </span>
+       <span className="ml-3">{label}</span>
+       {currentView === view && <span className="absolute right-4 w-1.5 h-1.5 rounded-full bg-primary-600 dark:bg-primary-400"></span>}
+    </button>
+  );
+
   const NavLinks = () => (
     <>
-      <button 
-        onClick={() => handleNavClick('board')}
-        className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg mb-1 transition-all duration-200 group relative ${currentView === 'board' ? 'bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white'}`}
-      >
-         <svg className={`w-5 h-5 mr-3 transition-colors ${currentView === 'board' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-         Board View
-         {currentView === 'board' && <span className="absolute right-4 w-1.5 h-1.5 rounded-full bg-primary-600 dark:bg-primary-400"></span>}
-      </button>
+      <div className="px-4 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 mt-2">Views</div>
+      <NavItem 
+        view="board" 
+        label="Board" 
+        icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>}
+      />
+      <NavItem 
+        view="list" 
+        label="List" 
+        icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>}
+      />
+      <NavItem 
+        view="timeline" 
+        label="Timeline" 
+        icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
+      />
       
-      <button 
-        onClick={() => handleNavClick('list')}
-        className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg mb-1 transition-all duration-200 group relative ${currentView === 'list' ? 'bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white'}`}
-      >
-         <svg className={`w-5 h-5 mr-3 transition-colors ${currentView === 'list' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-         List View
-         {currentView === 'list' && <span className="absolute right-4 w-1.5 h-1.5 rounded-full bg-primary-600 dark:bg-primary-400"></span>}
-      </button>
+      <div className="px-4 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 mt-6">Workspace</div>
+      <NavItem 
+        view="my-tasks" 
+        label="My Tasks" 
+        icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
+      />
+      <NavItem 
+        view="docs" 
+        label="Documents" 
+        icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
+      />
+      <NavItem 
+        view="reports" 
+        label="Reports" 
+        icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
+      />
 
-      <button 
-        onClick={() => handleNavClick('reports')}
-        className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg mb-1 transition-all duration-200 group relative ${currentView === 'reports' ? 'bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white'}`}
-      >
-         <svg className={`w-5 h-5 mr-3 transition-colors ${currentView === 'reports' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-         Reports
-         {currentView === 'reports' && <span className="absolute right-4 w-1.5 h-1.5 rounded-full bg-primary-600 dark:bg-primary-400"></span>}
-      </button>
-
-      <div className="pt-4 border-t border-gray-100 dark:border-gray-700 mt-2 space-y-1">
+      <div className="pt-4 border-t border-gray-100 dark:border-gray-700 mt-4 space-y-1">
         <button 
           onClick={onGenerateSprint}
-          className="w-full flex items-center px-4 py-3 text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 dark:from-purple-400 dark:to-indigo-400 hover:bg-purple-50 dark:hover:bg-purple-900/10 rounded-lg transition-all"
+          className="w-full flex items-center px-4 py-2 text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 dark:from-purple-400 dark:to-indigo-400 hover:bg-purple-50 dark:hover:bg-purple-900/10 rounded-lg transition-all"
         >
           <svg className="w-5 h-5 mr-3 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
           Magic Sprint
-        </button>
-
-        <button 
-          onClick={onExportCSV}
-          className="w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white"
-        >
-          <svg className="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-          Export CSV
         </button>
       </div>
     </>
@@ -150,12 +165,9 @@ const Layout: React.FC<LayoutProps> = ({
                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                </button>
             </div>
-            <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+            <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
                <NavLinks />
             </nav>
-            <div className="p-4 bg-gray-50 dark:bg-gray-700/30 m-4 rounded-xl">
-               <p className="text-xs italic text-gray-600 dark:text-gray-400">"{quote}"</p>
-            </div>
          </div>
       </div>
 
@@ -183,13 +195,6 @@ const Layout: React.FC<LayoutProps> = ({
                <p className="text-xs italic text-gray-600 dark:text-gray-400 leading-relaxed">"{quote}"</p>
             </div>
         </div>
-
-        <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-           <div className="bg-gradient-to-r from-primary-600 to-indigo-600 rounded-xl p-4 text-white shadow-lg">
-              <h4 className="font-bold text-sm mb-1">Premium Plan</h4>
-              <p className="text-xs text-primary-100 mb-3">AI features enabled.</p>
-           </div>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -199,45 +204,47 @@ const Layout: React.FC<LayoutProps> = ({
         <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-16 px-4 sm:px-6 flex items-center justify-between shrink-0 z-20 transition-colors duration-300">
           
           <div className="flex items-center gap-3">
-             {/* Mobile Menu Button */}
              <button 
                 onClick={() => setIsMobileMenuOpen(true)}
                 className="md:hidden p-2 -ml-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
              >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" /></svg>
              </button>
-
-             {/* Mobile Brand */}
              <div className="md:hidden font-bold text-lg text-gray-900 dark:text-white">TaskFlow</div>
-
-             {/* Breadcrumbs */}
              <div className="hidden md:flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
                <span className="hover:text-gray-900 dark:hover:text-white cursor-pointer">Workspace</span>
                <svg className="w-4 h-4 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-               <span className="text-gray-900 dark:text-white capitalize">{currentView}</span>
+               <span className="text-gray-900 dark:text-white capitalize">{currentView.replace('-', ' ')}</span>
              </div>
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-4">
              {/* Search */}
-             <div className="relative">
+             <div className="relative hidden sm:block">
                <input 
                  type="text" 
                  value={searchQuery}
                  onChange={(e) => onSearchChange(e.target.value)}
                  placeholder="Search tasks..." 
-                 className="w-32 sm:w-64 pl-9 pr-4 py-1.5 bg-gray-100 dark:bg-gray-700 border-transparent focus:bg-white dark:focus:bg-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-transparent rounded-lg text-sm transition-all text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                 className="w-48 pl-9 pr-4 py-1.5 bg-gray-100 dark:bg-gray-700 border-transparent focus:bg-white dark:focus:bg-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-transparent rounded-lg text-sm transition-all text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                />
                <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 absolute left-3 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
              </div>
 
-             <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block"></div>
+             {/* Automations Button */}
+             <button 
+               onClick={onOpenAutomations}
+               className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+               title="Automations"
+             >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+             </button>
 
              {/* Theme Switcher */}
              <div className="relative" ref={themeMenuRef}>
                <button 
                  onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
-                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
                >
                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
@@ -245,23 +252,16 @@ const Layout: React.FC<LayoutProps> = ({
                </button>
 
                {isThemeMenuOpen && (
-                 <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-4 z-50">
+                 <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-4 z-50 animate-fade-in-up">
                     <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Dark Mode</span>
                       <button 
                         onClick={toggleDarkMode}
                         className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${darkMode ? 'bg-primary-600' : 'bg-gray-200 dark:bg-gray-700'}`}
                       >
-                        <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${darkMode ? 'translate-x-5' : 'translate-x-0'}`}>
-                          {darkMode ? (
-                             <svg className="h-3 w-3 text-primary-600 m-1" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
-                          ) : (
-                             <svg className="h-3 w-3 text-yellow-500 m-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" clipRule="evenodd"></path></svg>
-                          )}
-                        </span>
+                        <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${darkMode ? 'translate-x-5' : 'translate-x-0'}`}></span>
                       </button>
                     </div>
-
                     <div>
                       <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 block">Accent Color</span>
                       <div className="grid grid-cols-5 gap-2">
@@ -271,12 +271,7 @@ const Layout: React.FC<LayoutProps> = ({
                             onClick={() => setColorTheme(t.id)}
                             className={`w-8 h-8 rounded-full flex items-center justify-center focus:outline-none ring-2 ring-offset-2 dark:ring-offset-gray-800 transition-all ${colorTheme === t.id ? 'ring-gray-400 scale-110' : 'ring-transparent hover:scale-105'}`}
                             style={{ backgroundColor: t.color }}
-                            title={t.name}
-                          >
-                            {colorTheme === t.id && (
-                              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                            )}
-                          </button>
+                          />
                         ))}
                       </div>
                     </div>
@@ -284,7 +279,6 @@ const Layout: React.FC<LayoutProps> = ({
                )}
              </div>
 
-             {/* New Task Button */}
              <button 
                 onClick={onNewTask}
                 className="bg-gray-900 dark:bg-primary-600 hover:bg-gray-800 dark:hover:bg-primary-700 text-white text-sm font-medium py-2 px-3 sm:px-4 rounded-lg shadow-sm flex items-center transition-colors"
@@ -293,8 +287,11 @@ const Layout: React.FC<LayoutProps> = ({
                 <span className="hidden sm:inline">New Task</span>
              </button>
              
-             <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 flex items-center justify-center cursor-pointer shrink-0">
-                <span className="text-xs font-bold text-gray-600 dark:text-gray-300">JD</span>
+             <div className="relative group">
+                <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 flex items-center justify-center cursor-pointer shrink-0">
+                  <span className="text-xs font-bold text-gray-600 dark:text-gray-300">JD</span>
+                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full"></div>
+                </div>
              </div>
           </div>
         </header>
@@ -312,13 +309,8 @@ const Layout: React.FC<LayoutProps> = ({
              <button
                onClick={() => setIsChatOpen(true)}
                className="w-14 h-14 bg-gradient-to-r from-primary-600 to-indigo-600 rounded-full shadow-lg flex items-center justify-center text-white hover:shadow-xl hover:scale-105 transition-all focus:outline-none focus:ring-4 focus:ring-primary-300"
-               title="Open AI Assistant"
              >
                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
-               <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-               </span>
              </button>
            )}
         </div>

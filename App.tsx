@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout, { ViewType } from './components/Layout';
 import TaskBoard from './components/TaskBoard';
@@ -5,7 +6,10 @@ import TaskList from './components/TaskList';
 import Reports from './components/Reports';
 import TaskModal from './components/TaskModal';
 import Toast from './components/Toast';
-import { Task, TaskStatus, TaskPriority, Comment } from './types';
+import TimelineView from './components/TimelineView';
+import DocsView from './components/DocsView';
+import AutomationModal from './components/AutomationModal';
+import { Task, TaskStatus, TaskPriority, Comment, AutomationRule, ProjectDoc } from './types';
 import { generateSprintTasks, autoAssignTasks } from './services/geminiService';
 
 // Mock Data
@@ -16,13 +20,13 @@ const INITIAL_TASKS: Task[] = [
     description: 'Review the current color palette and typography scale.\n\n- [x] Colors\n- [x] Typography\n- [ ] Spacing',
     status: TaskStatus.IN_PROGRESS,
     priority: TaskPriority.HIGH,
-    dueDate: '2023-11-15',
+    dueDate: new Date(Date.now() + 86400000 * 2).toISOString(),
     assignee: 'Alex',
     tags: ['Design', 'Audit'],
     comments: [
       { id: 'c1', text: 'I found some inconsistencies in the mobile view.', author: 'Sam', createdAt: Date.now() - 10000000 }
     ],
-    createdAt: Date.now(),
+    createdAt: Date.now() - 86400000 * 5,
     estimatedTime: 4,
   },
   {
@@ -31,11 +35,11 @@ const INITIAL_TASKS: Task[] = [
     description: 'Integrate the new authentication API endpoints.\n\n- [ ] Login\n- [ ] Signup\n- [ ] Forgot Password',
     status: TaskStatus.TODO,
     priority: TaskPriority.HIGH,
-    dueDate: '2023-11-20',
+    dueDate: new Date(Date.now() + 86400000 * 5).toISOString(),
     assignee: 'Sam',
     tags: ['Dev', 'Backend'],
     comments: [],
-    createdAt: Date.now(),
+    createdAt: Date.now() - 86400000 * 2,
     estimatedTime: 8,
   },
   {
@@ -44,11 +48,11 @@ const INITIAL_TASKS: Task[] = [
     description: 'Ensure the API docs reflect the latest breaking changes.',
     status: TaskStatus.DONE,
     priority: TaskPriority.LOW,
-    dueDate: '2023-11-01',
+    dueDate: new Date(Date.now() - 86400000).toISOString(),
     assignee: 'Taylor',
     tags: ['Docs'],
     comments: [],
-    createdAt: Date.now(),
+    createdAt: Date.now() - 86400000 * 10,
     estimatedTime: 2,
   },
     {
@@ -57,13 +61,25 @@ const INITIAL_TASKS: Task[] = [
     description: 'Draft initial outline for Q4 social media campaigns.',
     status: TaskStatus.REVIEW,
     priority: TaskPriority.MEDIUM,
-    dueDate: '2023-11-10',
+    dueDate: new Date(Date.now() + 86400000 * 10).toISOString(),
     assignee: 'Jordan',
     tags: ['Marketing'],
     comments: [],
-    createdAt: Date.now(),
+    createdAt: Date.now() - 86400000 * 3,
     estimatedTime: 5,
   },
+];
+
+const INITIAL_RULES: AutomationRule[] = [
+  {
+    id: '1',
+    name: 'Auto-Archive Done Tasks',
+    triggerType: 'STATUS_CHANGE',
+    triggerValue: TaskStatus.DONE,
+    actionType: 'SET_PRIORITY',
+    actionValue: TaskPriority.LOW,
+    isActive: true
+  }
 ];
 
 interface ToastMessage {
@@ -73,7 +89,11 @@ interface ToastMessage {
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const [docs, setDocs] = useState<ProjectDoc[]>([]);
+  const [automations, setAutomations] = useState<AutomationRule[]>(INITIAL_RULES);
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
   const [currentTask, setCurrentTask] = useState<Task | undefined>(undefined);
   const [currentView, setCurrentView] = useState<ViewType>('board');
   const [searchQuery, setSearchQuery] = useState('');
@@ -108,25 +128,50 @@ function App() {
     }
   }, [colorTheme]);
 
-  // Load tasks from local storage
+  // Load from Local Storage
   useEffect(() => {
-     const saved = localStorage.getItem('taskflow_tasks');
-     if (saved) {
-       try {
-         setTasks(JSON.parse(saved));
-       } catch (e) {
-         console.error("Failed to load tasks", e);
-       }
-     }
+     const savedTasks = localStorage.getItem('taskflow_tasks');
+     if (savedTasks) setTasks(JSON.parse(savedTasks));
+
+     const savedDocs = localStorage.getItem('taskflow_docs');
+     if (savedDocs) setDocs(JSON.parse(savedDocs));
+
+     const savedRules = localStorage.getItem('taskflow_automations');
+     if (savedRules) setAutomations(JSON.parse(savedRules));
   }, []);
 
-  // Save tasks to local storage
-  useEffect(() => {
-    localStorage.setItem('taskflow_tasks', JSON.stringify(tasks));
-  }, [tasks]);
+  // Save to Local Storage
+  useEffect(() => localStorage.setItem('taskflow_tasks', JSON.stringify(tasks)), [tasks]);
+  useEffect(() => localStorage.setItem('taskflow_docs', JSON.stringify(docs)), [docs]);
+  useEffect(() => localStorage.setItem('taskflow_automations', JSON.stringify(automations)), [automations]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
+  };
+
+  // --- Automation Logic ---
+  const runAutomations = (task: Task) => {
+    let updatedTask = { ...task };
+    let triggered = false;
+
+    automations.forEach(rule => {
+      if (!rule.isActive) return;
+
+      if (rule.triggerType === 'STATUS_CHANGE' && rule.triggerValue === task.status) {
+        triggered = true;
+        if (rule.actionType === 'SET_PRIORITY') {
+           updatedTask.priority = rule.actionValue as TaskPriority;
+           showToast(`Automation: Set priority to ${rule.actionValue}`, 'info');
+        }
+        if (rule.actionType === 'ASSIGN_USER') {
+           updatedTask.assignee = rule.actionValue;
+           showToast(`Automation: Assigned to ${rule.actionValue}`, 'info');
+        }
+        // Comment addition logic handled separately to avoid infinite loops if comment triggers something (not implemented yet)
+      }
+    });
+
+    return { updatedTask, triggered };
   };
 
   // --- Actions ---
@@ -172,10 +217,21 @@ function App() {
   };
 
   const handleTaskMove = (taskId: string, newStatus: TaskStatus) => {
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+    let task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    // Apply status change
+    let updatedTask = { ...task, status: newStatus };
+
+    // Run Automations
+    const { updatedTask: automatedTask, triggered } = runAutomations(updatedTask);
+
+    setTasks(prev => prev.map(t => t.id === taskId ? automatedTask : t));
     
     if (newStatus === TaskStatus.DONE) {
       showToast('Task completed! 🎉', 'success');
+    } else if (triggered) {
+      // Toast handled in runAutomations
     }
   };
 
@@ -184,7 +240,8 @@ function App() {
       id: Date.now().toString(),
       text,
       author: 'You',
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      reactions: {}
     };
 
     const updateTaskWithComment = (task: Task) => ({
@@ -197,6 +254,37 @@ function App() {
     if (currentTask && currentTask.id === taskId) {
       setCurrentTask(prev => prev ? updateTaskWithComment(prev) : prev);
     }
+  };
+
+  const handleAddReaction = (taskId: string, commentId: string, emoji: string) => {
+     setTasks(prev => prev.map(t => {
+        if (t.id !== taskId || !t.comments) return t;
+        
+        const updatedComments = t.comments.map(c => {
+           if (c.id !== commentId) return c;
+           
+           const currentReactions = c.reactions || {};
+           const existing = currentReactions[emoji] || { count: 0, userReacted: false, emoji };
+           
+           return {
+              ...c,
+              reactions: {
+                 ...currentReactions,
+                 [emoji]: {
+                    ...existing,
+                    count: existing.count + 1,
+                    userReacted: true
+                 }
+              }
+           };
+        });
+        
+        if (currentTask && currentTask.id === taskId) {
+           setCurrentTask({ ...t, comments: updatedComments });
+        }
+        
+        return { ...t, comments: updatedComments };
+     }));
   };
 
   const handleDuplicateTask = (task: Task) => {
@@ -219,6 +307,39 @@ function App() {
     }
   };
 
+  // --- Docs Handlers ---
+  const handleSaveDoc = (doc: ProjectDoc) => {
+     if (docs.find(d => d.id === doc.id)) {
+        setDocs(prev => prev.map(d => d.id === doc.id ? doc : d));
+        showToast('Document saved');
+     } else {
+        setDocs(prev => [...prev, doc]);
+        showToast('New document created');
+     }
+  };
+
+  const handleDeleteDoc = (id: string) => {
+     if(window.confirm('Delete this document?')) {
+        setDocs(prev => prev.filter(d => d.id !== id));
+        showToast('Document deleted');
+     }
+  };
+
+  // --- Automation Handlers ---
+  const handleAddRule = (rule: AutomationRule) => {
+    setAutomations(prev => [...prev, rule]);
+    showToast('Automation rule created');
+  };
+
+  const handleDeleteRule = (id: string) => {
+    setAutomations(prev => prev.filter(r => r.id !== id));
+  };
+
+  const handleToggleRule = (id: string) => {
+    setAutomations(prev => prev.map(r => r.id === id ? { ...r, isActive: !r.isActive } : r));
+  };
+
+  // --- Export ---
   const handleExportCSV = () => {
     const headers = ['ID', 'Title', 'Description', 'Status', 'Priority', 'Due Date', 'Assignee', 'Estimated Time', 'Created At'];
     const rows = tasks.map(t => [
@@ -263,14 +384,12 @@ function App() {
     showToast('Task added quickly', 'success');
   };
 
-  // Feature 7: AI Sprint Generation
   const handleGenerateSprint = async () => {
     const goal = prompt("What is the goal of this sprint? (e.g., 'Build the user dashboard')");
     if (!goal) return;
 
     showToast("AI is generating your sprint plan...", 'info');
     
-    // Get list of existing users for better assignment
     const users = Array.from(new Set(tasks.map(t => t.assignee).filter(Boolean))) as string[];
     const generatedTasks = await generateSprintTasks(goal, users.length ? users : ['Alex', 'Sam', 'Taylor']);
 
@@ -290,7 +409,6 @@ function App() {
     }
   };
 
-  // Feature 11: AI Auto-Assign
   const handleAutoAssign = async () => {
     const unassigned = tasks.filter(t => !t.assignee || t.assignee === 'Unassigned' || t.assignee === 'You');
     if (unassigned.length === 0) {
@@ -333,6 +451,7 @@ function App() {
       onSearchChange={setSearchQuery}
       onExportCSV={handleExportCSV}
       onGenerateSprint={handleGenerateSprint}
+      onOpenAutomations={() => setIsAutomationModalOpen(true)}
       tasks={tasks}
     >
       {currentView === 'board' && (
@@ -355,6 +474,29 @@ function App() {
         />
       )}
 
+      {currentView === 'my-tasks' && (
+        <TaskList 
+          tasks={tasks.filter(t => t.assignee === 'You' || t.assignee === 'Unassigned')}
+          onTaskClick={handleEditTask}
+          searchQuery={searchQuery}
+        />
+      )}
+
+      {currentView === 'timeline' && (
+        <TimelineView 
+          tasks={tasks}
+          onTaskClick={handleEditTask}
+        />
+      )}
+
+      {currentView === 'docs' && (
+        <DocsView 
+          docs={docs}
+          onSaveDoc={handleSaveDoc}
+          onDeleteDoc={handleDeleteDoc}
+        />
+      )}
+
       {currentView === 'reports' && (
         <Reports tasks={tasks} />
       )}
@@ -366,7 +508,17 @@ function App() {
         onDelete={handleDeleteTask}
         onDuplicate={handleDuplicateTask}
         onAddComment={handleAddComment}
+        onAddReaction={handleAddReaction}
         task={currentTask}
+      />
+
+      <AutomationModal
+        isOpen={isAutomationModalOpen}
+        onClose={() => setIsAutomationModalOpen(false)}
+        rules={automations}
+        onAddRule={handleAddRule}
+        onDeleteRule={handleDeleteRule}
+        onToggleRule={handleToggleRule}
       />
 
       {toast && (

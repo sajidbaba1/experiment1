@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Task, TaskStatus, TaskPriority } from '../types';
 import TaskCard from './TaskCard';
@@ -110,6 +111,8 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
        {/* Sorting & Filter Toolbar */}
        <div className="px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4 shrink-0 border-b border-transparent">
           <div className="flex flex-wrap items-center gap-4">
+            
+            {/* Sort */}
             <div className="flex items-center space-x-2">
                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sort:</span>
                <div className="relative inline-block text-left">
@@ -125,6 +128,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                </div>
             </div>
 
+            {/* Tag Filter */}
             <div className="flex items-center space-x-2">
                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tag:</span>
                <div className="relative inline-block text-left">
@@ -141,6 +145,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                </div>
             </div>
 
+            {/* Assignee Filter */}
             <div className="flex items-center space-x-2">
                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Assignee:</span>
                <div className="relative inline-block text-left">
@@ -153,6 +158,21 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                      {allAssignees.map(a => (
                        <option key={a} value={a}>{a}</option>
                      ))}
+                  </select>
+               </div>
+            </div>
+
+            {/* Saved Views (Mock) */}
+            <div className="flex items-center space-x-2">
+               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Saved View:</span>
+               <div className="relative inline-block text-left">
+                  <select 
+                    className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 dark:text-gray-200 cursor-pointer text-gray-400"
+                    defaultValue=""
+                  >
+                     <option value="" disabled>Load View...</option>
+                     <option value="high-priority">High Priority</option>
+                     <option value="my-bugs">My Bugs</option>
                   </select>
                </div>
             </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Task, TaskPriority, TaskStatus, Comment } from '../types';
 import Button from './Button';
@@ -10,10 +11,11 @@ interface TaskModalProps {
   onDelete?: (id: string) => void;
   onAddComment?: (taskId: string, text: string) => void;
   onDuplicate?: (task: Task) => void;
+  onAddReaction?: (taskId: string, commentId: string, emoji: string) => void; // New prop
   task?: Task;
 }
 
-const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete, onAddComment, onDuplicate, task }) => {
+const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete, onAddComment, onDuplicate, onAddReaction, task }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
@@ -28,7 +30,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
   
   // Comment State
   const [newComment, setNewComment] = useState('');
-  const [commentSummary, setCommentSummary] = useState(''); // Feature 8
+  const [commentSummary, setCommentSummary] = useState('');
   const [isSummarizing, setIsSummarizing] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
@@ -123,6 +125,12 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
     }
   };
 
+  const handleShare = () => {
+      const url = `https://taskflow.app/task/${task?.id || '123'}`; // Mock URL
+      navigator.clipboard.writeText(url);
+      alert('Public link copied to clipboard!');
+  };
+
   // Tag Handlers
   const handleAddTag = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && tagInput.trim()) {
@@ -136,6 +144,12 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
 
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(t => t !== tagToRemove));
+  };
+
+  const handleReaction = (commentId: string, emoji: string) => {
+      if (task && onAddReaction) {
+          onAddReaction(task.id, commentId, emoji);
+      }
   };
 
   return (
@@ -153,6 +167,15 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
             {task ? 'Edit Task' : 'New Task'}
           </h2>
           <div className="flex items-center space-x-2">
+            {task && (
+                <button 
+                  onClick={handleShare}
+                  className="p-1 rounded text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-gray-700 dark:hover:text-primary-400 transition-colors"
+                  title="Share Public Link"
+                >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                </button>
+            )}
             {task && onDuplicate && (
                <button 
                  onClick={() => onDuplicate(task)}
@@ -311,7 +334,6 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
             <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
               <div className="flex justify-between items-center mb-3">
                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">Activity & Comments</h3>
-                 {/* Feature 8: Summarize Comments */}
                  {task.comments && task.comments.length > 2 && (
                     <button 
                        onClick={handleSummarizeComments} 
@@ -347,6 +369,19 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
                               </span>
                            </div>
                            <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5">{comment.text}</p>
+                           
+                           {/* Reactions Bar */}
+                           <div className="flex space-x-2 mt-1">
+                               <button onClick={() => handleReaction(comment.id, '👍')} className="text-xs text-gray-400 hover:text-blue-500 transition-colors">👍</button>
+                               <button onClick={() => handleReaction(comment.id, '❤️')} className="text-xs text-gray-400 hover:text-red-500 transition-colors">❤️</button>
+                               <button onClick={() => handleReaction(comment.id, '🔥')} className="text-xs text-gray-400 hover:text-orange-500 transition-colors">🔥</button>
+                               
+                               {comment.reactions && Object.entries(comment.reactions).map(([emoji, reaction]) => (
+                                   <span key={emoji} className="text-[10px] bg-white dark:bg-gray-600 border border-gray-100 dark:border-gray-500 px-1 rounded-full flex items-center">
+                                       {emoji} {reaction.count}
+                                   </span>
+                               ))}
+                           </div>
                         </div>
                       </div>
                     ))}
