@@ -11,11 +11,12 @@ interface TaskModalProps {
   onDelete?: (id: string) => void;
   onAddComment?: (taskId: string, text: string) => void;
   onDuplicate?: (task: Task) => void;
-  onAddReaction?: (taskId: string, commentId: string, emoji: string) => void; // New prop
+  onAddReaction?: (taskId: string, commentId: string, emoji: string) => void;
   task?: Task;
+  allTasks?: Task[]; // Passed to select dependencies
 }
 
-const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete, onAddComment, onDuplicate, onAddReaction, task }) => {
+const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete, onAddComment, onDuplicate, onAddReaction, task, allTasks = [] }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
@@ -24,6 +25,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [estimatedTime, setEstimatedTime] = useState<number | ''>(''); 
+  const [blockedBy, setBlockedBy] = useState<string[]>([]);
   
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [suggestedSubtasks, setSuggestedSubtasks] = useState<string[]>([]);
@@ -33,6 +35,9 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
   const [commentSummary, setCommentSummary] = useState('');
   const [isSummarizing, setIsSummarizing] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
+  
+  // Feature 2: Voice Input
+  const [isListening, setIsListening] = useState(false);
 
   useEffect(() => {
     if (task) {
@@ -43,10 +48,10 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       setDueDate(task.dueDate);
       setTags(task.tags || []);
       setEstimatedTime(task.estimatedTime || '');
+      setBlockedBy(task.blockedBy || []);
       setSuggestedSubtasks([]);
       setCommentSummary('');
     } else {
-      // Reset for new task
       setTitle('');
       setDescription('');
       setStatus(TaskStatus.TODO);
@@ -54,6 +59,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       setDueDate(new Date().toISOString().split('T')[0]);
       setTags([]);
       setEstimatedTime('');
+      setBlockedBy([]);
       setSuggestedSubtasks([]);
       setCommentSummary('');
     }
@@ -61,7 +67,6 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
     setTagInput('');
   }, [task, isOpen]);
 
-  // Scroll to bottom of comments when task changes or new comment added
   useEffect(() => {
     if (isOpen && task) {
        setTimeout(() => {
@@ -82,7 +87,8 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       priority,
       dueDate,
       tags,
-      estimatedTime: estimatedTime === '' ? undefined : Number(estimatedTime)
+      estimatedTime: estimatedTime === '' ? undefined : Number(estimatedTime),
+      blockedBy
     });
     onClose();
   };
@@ -126,12 +132,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
   };
 
   const handleShare = () => {
-      const url = `https://taskflow.app/task/${task?.id || '123'}`; // Mock URL
+      const url = `https://taskflow.app/task/${task?.id || '123'}`;
       navigator.clipboard.writeText(url);
       alert('Public link copied to clipboard!');
   };
 
-  // Tag Handlers
   const handleAddTag = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && tagInput.trim()) {
       e.preventDefault();
@@ -152,6 +157,47 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       }
   };
 
+  // Feature 2: Voice Logic
+  const toggleVoice = () => {
+    if (!('webkitSpeechRecognition' in window)) {
+        alert("Speech recognition not supported in this browser.");
+        return;
+    }
+
+    if (isListening) {
+        setIsListening(false);
+        // Logic to stop handled by browser mostly, we just update UI state
+    } else {
+        setIsListening(true);
+        const recognition = new (window as any).webkitSpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.onresult = (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            setDescription(prev => prev + (prev ? ' ' : '') + transcript);
+            setIsListening(false);
+        };
+        recognition.onerror = () => setIsListening(false);
+        recognition.onend = () => setIsListening(false);
+        recognition.start();
+    }
+  };
+
+  // Feature 10: Rich Text Toolbar Helper
+  const insertText = (before: string, after: string = '') => {
+      const textarea = document.getElementById('desc-editor') as HTMLTextAreaElement;
+      if (!textarea) return;
+      
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value;
+      const beforeText = text.substring(0, start);
+      const afterText = text.substring(end, text.length);
+      const selection = text.substring(start, end);
+      
+      setDescription(beforeText + before + selection + after + afterText);
+      textarea.focus();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-6">
       <div 
@@ -161,7 +207,6 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
 
       <div className="bg-white dark:bg-gray-800 sm:rounded-xl shadow-2xl w-full h-full sm:h-auto sm:max-w-2xl transform transition-all flex flex-col sm:max-h-[90vh] z-10 border border-gray-100 dark:border-gray-700">
         
-        {/* Header */}
         <div className="flex justify-between items-center px-4 sm:px-6 py-4 border-b border-gray-100 dark:border-gray-700 shrink-0">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
             {task ? 'Edit Task' : 'New Task'}
@@ -191,10 +236,8 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
           </div>
         </div>
 
-        {/* Body */}
         <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar space-y-6 flex-1">
           
-          {/* Title Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Task Title</label>
             <input
@@ -208,7 +251,6 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-             {/* Status */}
              <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
               <select
@@ -222,7 +264,6 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
               </select>
             </div>
 
-            {/* Priority */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
               <select
@@ -236,7 +277,6 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
               </select>
             </div>
 
-            {/* Due Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
               <input
@@ -247,7 +287,6 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
               />
             </div>
 
-            {/* Feature 6: Estimated Time */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Est. Time (Hours)</label>
               <input
@@ -262,7 +301,36 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
             </div>
           </div>
           
-          {/* Tags Input */}
+          {/* Feature 5: Task Dependencies */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Blocked By</label>
+            <select
+              value=""
+              onChange={(e) => {
+                 if(e.target.value && !blockedBy.includes(e.target.value)) {
+                    setBlockedBy([...blockedBy, e.target.value]);
+                 }
+              }}
+              className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm text-gray-900 dark:text-white"
+            >
+              <option value="">Add Blocking Task...</option>
+              {allTasks.filter(t => t.id !== task?.id).map(t => (
+                 <option key={t.id} value={t.id}>{t.title}</option>
+              ))}
+            </select>
+            <div className="flex flex-wrap gap-2 mt-2">
+               {blockedBy.map(id => {
+                  const blocker = allTasks.find(t => t.id === id);
+                  return (
+                    <span key={id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300">
+                      Blocked by: {blocker?.title || 'Unknown'}
+                      <button onClick={() => setBlockedBy(blockedBy.filter(bid => bid !== id))} className="ml-1 hover:text-red-900">×</button>
+                    </span>
+                  );
+               })}
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tags</label>
             <div className="flex flex-wrap items-center gap-2 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus-within:ring-2 focus-within:ring-primary-500">
@@ -285,39 +353,44 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
             </div>
           </div>
 
-          {/* Description + AI */}
           <div className="relative">
             <div className="flex justify-between items-center mb-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-              <button 
-                type="button"
-                onClick={handleAiEnhance}
-                disabled={isAiLoading || !title}
-                className="flex items-center text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 disabled:opacity-50 transition-colors"
-              >
-                {isAiLoading ? (
-                   <span className="flex items-center">
-                     <svg className="animate-spin -ml-1 mr-1 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                     Thinking...
-                   </span>
-                ) : (
-                  <span className="flex items-center">
-                    <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                    AI Enhance
-                  </span>
-                )}
-              </button>
+              <div className="flex items-center space-x-3">
+                  {/* Feature 10: Rich Text Toolbar */}
+                  <div className="flex items-center space-x-1 bg-gray-100 dark:bg-gray-700 rounded p-1">
+                      <button onClick={() => insertText('**', '**')} className="px-2 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600 rounded" title="Bold">B</button>
+                      <button onClick={() => insertText('*', '*')} className="px-2 text-xs italic text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600 rounded" title="Italic">I</button>
+                      <button onClick={() => insertText('- ')} className="px-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600 rounded" title="List">List</button>
+                      <button onClick={() => insertText('- [ ] ')} className="px-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600 rounded" title="Checklist">✓</button>
+                  </div>
+
+                  {/* Feature 2: Voice Input */}
+                  <button onClick={toggleVoice} className={`p-1 rounded-full transition-colors ${isListening ? 'bg-red-500 text-white animate-pulse' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="Dictate Description">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={handleAiEnhance}
+                    disabled={isAiLoading || !title}
+                    className="flex items-center text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 disabled:opacity-50 transition-colors"
+                  >
+                    {isAiLoading ? 'Thinking...' : 'AI Enhance'}
+                  </button>
+              </div>
             </div>
             <textarea
+              id="desc-editor"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow outline-none text-sm text-gray-700 dark:text-gray-300 resize-none bg-gray-50 dark:bg-gray-700"
-              placeholder="Describe task details... Use '- [ ]' for checklist items."
+              placeholder="Describe details..."
             />
             {suggestedSubtasks.length > 0 && (
                 <div className="mt-3 bg-purple-50 dark:bg-purple-900/20 p-3 rounded-md border border-purple-100 dark:border-purple-800">
-                    <p className="text-xs font-bold text-purple-800 dark:text-purple-300 mb-2">✨ AI Suggested Subtasks (Will be saved to description)</p>
+                    <p className="text-xs font-bold text-purple-800 dark:text-purple-300 mb-2">✨ AI Suggested Subtasks</p>
                     <ul className="space-y-1">
                         {suggestedSubtasks.map((st, idx) => (
                             <li key={idx} className="text-xs text-purple-700 dark:text-purple-400 flex items-start">
@@ -329,7 +402,6 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
             )}
           </div>
 
-          {/* Comments Section */}
           {task && (
             <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
               <div className="flex justify-between items-center mb-3">
@@ -353,7 +425,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
               
               <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 sm:p-4 mb-3 max-h-48 overflow-y-auto custom-scrollbar">
                 {!task.comments || task.comments.length === 0 ? (
-                  <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-2">No comments yet. Start the conversation!</p>
+                  <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-2">No comments yet.</p>
                 ) : (
                   <div className="space-y-3">
                     {task.comments.map((comment: Comment) => (
@@ -370,7 +442,6 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
                            </div>
                            <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5">{comment.text}</p>
                            
-                           {/* Reactions Bar */}
                            <div className="flex space-x-2 mt-1">
                                <button onClick={() => handleReaction(comment.id, '👍')} className="text-xs text-gray-400 hover:text-blue-500 transition-colors">👍</button>
                                <button onClick={() => handleReaction(comment.id, '❤️')} className="text-xs text-gray-400 hover:text-red-500 transition-colors">❤️</button>
@@ -408,14 +479,13 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
 
         </div>
 
-        {/* Footer */}
         <div className="px-4 sm:px-6 py-4 bg-gray-50 dark:bg-gray-750 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center sm:rounded-b-xl shrink-0 safe-pb-4">
           {task && onDelete ? (
              <Button 
                 variant="danger" 
                 size="sm" 
                 onClick={() => {
-                  if(window.confirm('Are you sure you want to delete this task?')) {
+                  if(window.confirm('Move this task to trash?')) {
                     onDelete(task.id);
                     onClose();
                   }

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Task, TaskPriority } from '../types';
 
@@ -14,12 +15,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
     [TaskPriority.HIGH]: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800',
   };
 
-  // Calculate Subtask Progress from Description Markdown
   const totalSubtasks = (task.description.match(/- \[[ x]\]/g) || []).length;
   const completedSubtasks = (task.description.match(/- \[x\]/g) || []).length;
   const progressPercent = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
+  const isBlocked = task.blockedBy && task.blockedBy.length > 0;
 
-  // Feature 10: Relative Time Helper
   const getRelativeTime = (timestamp: number) => {
     const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
     const diffInSeconds = (timestamp - Date.now()) / 1000;
@@ -29,15 +29,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
     return 'Today';
   };
 
-  // Feature 8: Copy ID
   const handleCopyId = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigator.clipboard.writeText(task.id);
   };
 
-  // Feature 7: Dynamic Tag Color
   const getTagColor = (tag: string) => {
-    // Simple hash function to generate a color index
     let hash = 0;
     for (let i = 0; i < tag.length; i++) {
       hash = tag.charCodeAt(i) + ((hash << 5) - hash);
@@ -58,8 +55,15 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
   return (
     <div 
       onClick={() => onClick(task)}
-      className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-primary-300 dark:hover:border-primary-700 transition-all cursor-pointer group flex flex-col gap-2"
+      className={`bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border ${isBlocked ? 'border-red-300 dark:border-red-800 ring-2 ring-red-100 dark:ring-red-900/20' : 'border-gray-200 dark:border-gray-700'} hover:shadow-md transition-all cursor-pointer group flex flex-col gap-2 relative`}
     >
+      {isBlocked && (
+         <div className="absolute -top-2 -right-2 bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-200 text-[10px] font-bold px-2 py-1 rounded-full shadow-sm flex items-center border border-red-200 dark:border-red-800 z-10">
+            <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            Blocked
+         </div>
+      )}
+
       <div className="flex justify-between items-start">
         <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full border ${priorityColors[task.priority]}`}>
           {task.priority}
@@ -76,7 +80,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
         {task.title}
       </h3>
       
-      {/* Tags */}
       {task.tags && task.tags.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {task.tags.map((tag, i) => (
@@ -87,7 +90,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
         </div>
       )}
 
-      {/* Subtask Progress Bar */}
       {totalSubtasks > 0 && (
         <div className="mt-1">
            <div className="flex justify-between text-[10px] text-gray-500 dark:text-gray-400 mb-1">
@@ -103,7 +105,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
         </div>
       )}
 
-      {/* Feature 6: Estimated Time Badge */}
       {task.estimatedTime && (
          <div className="flex items-center text-[10px] text-gray-400 dark:text-gray-500 mt-1">
             <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -113,12 +114,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
 
       <div className="flex justify-between items-center pt-2 mt-auto border-t border-gray-100 dark:border-gray-700">
         <div className="flex items-center space-x-2">
-           {/* Assignee Avatar */}
            <div className="h-6 w-6 rounded-full ring-2 ring-white dark:ring-gray-800 bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-white text-[10px] font-bold" title={task.assignee || 'Unassigned'}>
              {task.assignee ? task.assignee.substring(0, 2).toUpperCase() : 'UN'}
            </div>
            
-           {/* Comments Count */}
            {task.comments && task.comments.length > 0 && (
              <div className="flex items-center text-xs text-gray-400 dark:text-gray-500">
                 <svg className="w-3.5 h-3.5 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>

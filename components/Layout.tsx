@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import AiAssistant from './AiAssistant';
 import { Task } from '../types';
 
-export type ViewType = 'board' | 'list' | 'timeline' | 'reports' | 'my-tasks' | 'docs';
+export type ViewType = 'board' | 'list' | 'timeline' | 'reports' | 'my-tasks' | 'docs' | 'trash';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,8 +18,11 @@ interface LayoutProps {
   onSearchChange: (query: string) => void;
   onExportCSV: () => void;
   onGenerateSprint: () => void;
-  onOpenAutomations: () => void; // New prop
+  onOpenAutomations: () => void;
+  onOpenShortcuts: () => void;
   tasks: Task[];
+  zenMode: boolean;
+  toggleZenMode: () => void;
 }
 
 const QUOTES = [
@@ -44,17 +47,62 @@ const Layout: React.FC<LayoutProps> = ({
   onExportCSV,
   onGenerateSprint,
   onOpenAutomations,
-  tasks
+  onOpenShortcuts,
+  tasks,
+  zenMode,
+  toggleZenMode
 }) => {
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const themeMenuRef = useRef<HTMLDivElement>(null);
   const [quote, setQuote] = useState("");
+  
+  // Pomodoro State
+  const [pomoTime, setPomoTime] = useState(25 * 60);
+  const [isPomoRunning, setIsPomoRunning] = useState(false);
+  const [pomoMode, setPomoMode] = useState<'work' | 'break'>('work');
+
+  // Sticky Note State
+  const [stickyNote, setStickyNote] = useState(() => localStorage.getItem('taskflow_sticky') || '');
+  const [userStatus, setUserStatus] = useState<'online' | 'focus' | 'away'>('online');
 
   useEffect(() => {
     setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
   }, []);
+
+  // Sticky Note Persistence
+  useEffect(() => {
+    localStorage.setItem('taskflow_sticky', stickyNote);
+  }, [stickyNote]);
+
+  // Pomodoro Timer Effect
+  useEffect(() => {
+    let interval: any;
+    if (isPomoRunning && pomoTime > 0) {
+      interval = setInterval(() => setPomoTime(t => t - 1), 1000);
+    } else if (pomoTime === 0) {
+      setIsPomoRunning(false);
+      // Play sound or notify
+      alert(pomoMode === 'work' ? 'Work session done! Take a break.' : 'Break over! Back to work.');
+      setPomoMode(prev => prev === 'work' ? 'break' : 'work');
+      setPomoTime(pomoMode === 'work' ? 5 * 60 : 25 * 60);
+    }
+    return () => clearInterval(interval);
+  }, [isPomoRunning, pomoTime, pomoMode]);
+
+  const togglePomo = () => setIsPomoRunning(!isPomoRunning);
+  const resetPomo = () => {
+    setIsPomoRunning(false);
+    setPomoTime(25 * 60);
+    setPomoMode('work');
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -127,6 +175,14 @@ const Layout: React.FC<LayoutProps> = ({
         label="Reports" 
         icon={<svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
       />
+      
+      <div className="mt-6 border-t border-gray-100 dark:border-gray-700 pt-2">
+         <NavItem 
+          view="trash" 
+          label="Recycle Bin" 
+          icon={<svg className="w-5 h-5 text-gray-400 group-hover:text-red-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>}
+        />
+      </div>
 
       <div className="pt-4 border-t border-gray-100 dark:border-gray-700 mt-4 space-y-1">
         <button 
@@ -153,17 +209,11 @@ const Layout: React.FC<LayoutProps> = ({
 
       {/* Mobile Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+         {/* ... (keep mobile sidebar content similar to desktop but simplified) ... */}
          <div className="flex flex-col h-full">
             <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-               <div className="flex items-center space-x-2 text-primary-600 dark:text-primary-500">
-                  <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-500/30">
-                      <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                  </div>
-                  <span className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">TaskFlow</span>
-               </div>
-               <button onClick={() => setIsMobileMenuOpen(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-               </button>
+               <span className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">TaskFlow</span>
+               <button onClick={() => setIsMobileMenuOpen(false)}>Close</button>
             </div>
             <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
                <NavLinks />
@@ -172,7 +222,8 @@ const Layout: React.FC<LayoutProps> = ({
       </div>
 
       {/* Desktop Sidebar */}
-      <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 hidden md:flex flex-col transition-colors duration-300">
+      {!zenMode && (
+      <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 hidden md:flex flex-col transition-all duration-300 shrink-0">
         <div className="p-6 border-b border-gray-100 dark:border-gray-700">
           <div className="flex items-center space-x-2 text-primary-600 dark:text-primary-500">
              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-500/30">
@@ -184,9 +235,42 @@ const Layout: React.FC<LayoutProps> = ({
 
         <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
            <NavLinks />
+           
+           {/* Feature 9: Sticky Note */}
+           <div className="mt-8">
+              <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>Sticky Note</span>
+                <span className="text-[10px] text-gray-300">Auto-saves</span>
+              </div>
+              <textarea 
+                value={stickyNote}
+                onChange={(e) => setStickyNote(e.target.value)}
+                placeholder="Scratchpad..."
+                className="w-full h-32 p-3 text-sm bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-yellow-400 text-gray-700 dark:text-gray-300"
+              />
+           </div>
         </nav>
 
         <div className="px-4 pb-4">
+            {/* Feature 8: User Status */}
+            <div className="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-700 mb-3">
+               <div className="flex items-center space-x-2">
+                  <div className="relative">
+                    <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-xs font-bold">JD</div>
+                    <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 border-2 border-white dark:border-gray-800 rounded-full ${userStatus === 'online' ? 'bg-green-500' : userStatus === 'focus' ? 'bg-purple-500' : 'bg-yellow-500'}`}></div>
+                  </div>
+                  <select 
+                    value={userStatus}
+                    onChange={(e) => setUserStatus(e.target.value as any)}
+                    className="bg-transparent text-sm font-medium text-gray-700 dark:text-gray-200 outline-none cursor-pointer"
+                  >
+                    <option value="online">Online</option>
+                    <option value="focus">Focus Mode</option>
+                    <option value="away">Away</option>
+                  </select>
+               </div>
+            </div>
+
             <div className="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-700">
                <div className="flex items-center mb-2">
                  <svg className="w-3 h-3 text-primary-500 mr-1" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C19.5693 16 20.017 15.5523 20.017 15V9C20.017 8.44772 19.5693 8 19.017 8H15.017C14.4647 8 14.017 8.44772 14.017 9V11C14.017 11.5523 13.5693 12 13.017 12H12.017V5H22.017V15C22.017 18.3137 19.3307 21 16.017 21H14.017ZM5.0166 21L5.0166 18C5.0166 16.8954 5.91203 16 7.0166 16H10.0166C10.5689 16 11.0166 15.5523 11.0166 15V9C11.0166 8.44772 10.5689 8 10.0166 8H6.0166C5.46432 8 5.0166 8.44772 5.0166 9V11C5.0166 11.5523 4.56889 12 4.0166 12H3.0166V5H13.0166V15C13.0166 18.3137 10.3303 21 7.0166 21H5.0166Z" /></svg>
@@ -196,11 +280,13 @@ const Layout: React.FC<LayoutProps> = ({
             </div>
         </div>
       </aside>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900 transition-colors duration-300 relative">
         
         {/* Header */}
+        {!zenMode && (
         <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-16 px-4 sm:px-6 flex items-center justify-between shrink-0 z-20 transition-colors duration-300">
           
           <div className="flex items-center gap-3">
@@ -219,6 +305,24 @@ const Layout: React.FC<LayoutProps> = ({
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-4">
+             {/* Feature 1: Pomodoro Timer */}
+             <div className="hidden lg:flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                <button 
+                  onClick={togglePomo}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all flex items-center ${isPomoRunning ? 'bg-red-500 text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-600'}`}
+                >
+                   <svg className="w-3 h-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                   {formatTime(pomoTime)}
+                </button>
+                <button 
+                  onClick={resetPomo}
+                  className="px-2 py-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                  title="Reset Timer"
+                >
+                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                </button>
+             </div>
+
              {/* Search */}
              <div className="relative hidden sm:block">
                <input 
@@ -230,6 +334,15 @@ const Layout: React.FC<LayoutProps> = ({
                />
                <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 absolute left-3 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
              </div>
+             
+             {/* Zen Mode Toggle */}
+             <button 
+                onClick={toggleZenMode}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+                title="Enter Zen Mode"
+             >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+             </button>
 
              {/* Automations Button */}
              <button 
@@ -238,6 +351,15 @@ const Layout: React.FC<LayoutProps> = ({
                title="Automations"
              >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+             </button>
+
+             {/* Keyboard Shortcuts */}
+             <button 
+               onClick={onOpenShortcuts}
+               className="hidden sm:block p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors font-mono font-bold text-xs"
+               title="Keyboard Shortcuts (?)"
+             >
+                ?
              </button>
 
              {/* Theme Switcher */}
@@ -286,15 +408,20 @@ const Layout: React.FC<LayoutProps> = ({
                 <svg className="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                 <span className="hidden sm:inline">New Task</span>
              </button>
-             
-             <div className="relative group">
-                <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 flex items-center justify-center cursor-pointer shrink-0">
-                  <span className="text-xs font-bold text-gray-600 dark:text-gray-300">JD</span>
-                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full"></div>
-                </div>
-             </div>
           </div>
         </header>
+        )}
+
+        {/* Feature 4: Zen Mode Exit Button */}
+        {zenMode && (
+          <button 
+            onClick={toggleZenMode}
+            className="fixed top-4 right-4 z-50 bg-gray-800 text-white p-2 rounded-full shadow-lg opacity-50 hover:opacity-100 transition-opacity"
+            title="Exit Zen Mode"
+          >
+             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        )}
 
         {/* Content Area */}
         <div className="flex-1 overflow-x-hidden overflow-y-auto relative z-0">

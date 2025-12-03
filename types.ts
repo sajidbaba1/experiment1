@@ -38,6 +38,7 @@ export interface Task {
   comments?: Comment[];
   createdAt: number;
   estimatedTime?: number; 
+  blockedBy?: string[]; // IDs of tasks that block this one
 }
 
 export interface CreateTaskDTO {

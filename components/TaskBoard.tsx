@@ -10,7 +10,7 @@ interface TaskBoardProps {
   searchQuery: string;
   onQuickAddTask: (title: string, status: TaskStatus) => void;
   onClearDoneTasks: () => void;
-  onAutoAssign: () => void; // Feature 11
+  onAutoAssign: () => void;
 }
 
 type SortOption = 'priority' | 'dueDate' | 'created';
@@ -29,32 +29,24 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
   const [filterTag, setFilterTag] = useState<string>('all');
   const [filterAssignee, setFilterAssignee] = useState<string>('all');
   
-  // Quick Add State
+  // Feature 7: Zoom Control
+  const [zoomLevel, setZoomLevel] = useState(1);
+  
   const [quickAddTitles, setQuickAddTitles] = useState<Record<string, string>>({});
 
   const columns = Object.values(TaskStatus);
-
-  // Get all unique tags and assignees
   const allTags = Array.from(new Set(tasks.flatMap(t => t.tags || [])));
   const allAssignees = Array.from(new Set(tasks.map(t => t.assignee || 'Unassigned')));
 
-  // Filter Tasks
   const filteredTasks = tasks.filter(task => {
-    // Search Query
     const matchesSearch = 
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
       task.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Tag Filter
     const matchesTag = filterTag === 'all' || (task.tags && task.tags.includes(filterTag));
-    
-    // Feature 5: Assignee Filter
     const matchesAssignee = filterAssignee === 'all' || (task.assignee || 'Unassigned') === filterAssignee;
-
     return matchesSearch && matchesTag && matchesAssignee;
   });
 
-  // Sorting Logic
   const getSortedTasks = (taskList: Task[]) => {
     return [...taskList].sort((a, b) => {
       switch (sortBy) {
@@ -108,18 +100,16 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-       {/* Sorting & Filter Toolbar */}
        <div className="px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4 shrink-0 border-b border-transparent">
           <div className="flex flex-wrap items-center gap-4">
             
-            {/* Sort */}
             <div className="flex items-center space-x-2">
                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sort:</span>
                <div className="relative inline-block text-left">
                   <select 
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 dark:text-gray-200 cursor-pointer"
+                    className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 dark:text-gray-200"
                   >
                      <option value="priority">Priority</option>
                      <option value="dueDate">Due Date</option>
@@ -128,67 +118,47 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                </div>
             </div>
 
-            {/* Tag Filter */}
             <div className="flex items-center space-x-2">
                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tag:</span>
                <div className="relative inline-block text-left">
                   <select 
                     value={filterTag}
                     onChange={(e) => setFilterTag(e.target.value)}
-                    className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 dark:text-gray-200 cursor-pointer"
+                    className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 dark:text-gray-200"
                   >
                      <option value="all">All Tags</option>
-                     {allTags.map(tag => (
-                       <option key={tag} value={tag}>{tag}</option>
-                     ))}
-                  </select>
-               </div>
-            </div>
-
-            {/* Assignee Filter */}
-            <div className="flex items-center space-x-2">
-               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Assignee:</span>
-               <div className="relative inline-block text-left">
-                  <select 
-                    value={filterAssignee}
-                    onChange={(e) => setFilterAssignee(e.target.value)}
-                    className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 dark:text-gray-200 cursor-pointer"
-                  >
-                     <option value="all">All People</option>
-                     {allAssignees.map(a => (
-                       <option key={a} value={a}>{a}</option>
-                     ))}
-                  </select>
-               </div>
-            </div>
-
-            {/* Saved Views (Mock) */}
-            <div className="flex items-center space-x-2">
-               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Saved View:</span>
-               <div className="relative inline-block text-left">
-                  <select 
-                    className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 dark:text-gray-200 cursor-pointer text-gray-400"
-                    defaultValue=""
-                  >
-                     <option value="" disabled>Load View...</option>
-                     <option value="high-priority">High Priority</option>
-                     <option value="my-bugs">My Bugs</option>
+                     {allTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
                   </select>
                </div>
             </div>
           </div>
           
-          {/* Feature 11: Auto Assign Button */}
-          <button 
-             onClick={onAutoAssign}
-             className="text-xs flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors border border-indigo-200 dark:border-indigo-800"
-          >
-             <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-             Auto Assign
-          </button>
+          <div className="flex items-center space-x-4">
+             {/* Zoom Control */}
+             <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 p-1.5 rounded-lg border border-gray-200 dark:border-gray-700">
+               <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" /></svg>
+               <input 
+                 type="range" 
+                 min="0.7" 
+                 max="1.3" 
+                 step="0.1" 
+                 value={zoomLevel} 
+                 onChange={(e) => setZoomLevel(parseFloat(e.target.value))}
+                 className="w-16 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+               />
+               <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+             </div>
+
+             <button 
+                onClick={onAutoAssign}
+                className="text-xs flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors border border-indigo-200 dark:border-indigo-800"
+             >
+                <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                Auto Assign
+             </button>
+          </div>
        </div>
 
-       {/* Board */}
        <div className="flex-1 p-4 sm:p-6 pt-0 overflow-x-auto overflow-y-hidden mt-4">
          <div className="flex h-full space-x-4 sm:space-x-6 w-full snap-x snap-mandatory sm:snap-none pb-2">
             {columns.map((status) => {
@@ -199,6 +169,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                   className={`flex-shrink-0 flex flex-col w-[85vw] sm:w-[300px] h-full snap-center sm:snap-align-none transition-colors rounded-xl ${draggedTaskId ? 'bg-gray-50/50 dark:bg-gray-800/30' : ''}`}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, status)}
+                  style={{ width: `calc(300px * ${zoomLevel})`, minWidth: `calc(280px * ${zoomLevel})` }}
                 >
                   <div className="flex items-center justify-between mb-3 sm:mb-4 px-1">
                     <div className="flex items-center space-x-2">
@@ -231,6 +202,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                           draggable
                           onDragStart={(e) => handleDragStart(e, task.id)}
                           className="cursor-grab active:cursor-grabbing transform transition-transform hover:-translate-y-0.5"
+                          style={{ fontSize: `${zoomLevel}rem` }}
                         >
                           <TaskCard task={task} onClick={onTaskClick} />
                         </div>
@@ -259,8 +231,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                 </div>
               );
             })}
-            
-            <div className="w-4 sm:hidden flex-shrink-0"></div>
          </div>
       </div>
     </div>

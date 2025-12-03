@@ -8,6 +8,8 @@ import TaskModal from './components/TaskModal';
 import Toast from './components/Toast';
 import TimelineView from './components/TimelineView';
 import DocsView from './components/DocsView';
+import TrashView from './components/TrashView'; // Feature 3
+import ShortcutsModal from './components/ShortcutsModal'; // Feature 6
 import AutomationModal from './components/AutomationModal';
 import { Task, TaskStatus, TaskPriority, Comment, AutomationRule, ProjectDoc } from './types';
 import { generateSprintTasks, autoAssignTasks } from './services/geminiService';
@@ -89,17 +91,21 @@ interface ToastMessage {
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const [deletedTasks, setDeletedTasks] = useState<Task[]>([]); // Feature 3
   const [docs, setDocs] = useState<ProjectDoc[]>([]);
   const [automations, setAutomations] = useState<AutomationRule[]>(INITIAL_RULES);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false); // Feature 6
   const [currentTask, setCurrentTask] = useState<Task | undefined>(undefined);
   const [currentView, setCurrentView] = useState<ViewType>('board');
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState<ToastMessage | null>(null);
   
-  // Theme State
+  // Feature 4: Zen Mode
+  const [zenMode, setZenMode] = useState(false);
+  
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('taskflow_dark_mode');
     return saved ? JSON.parse(saved) : false;
@@ -109,7 +115,6 @@ function App() {
     return localStorage.getItem('taskflow_color_theme') || 'blue';
   });
 
-  // Apply Theme Effects
   useEffect(() => {
     localStorage.setItem('taskflow_dark_mode', JSON.stringify(darkMode));
     if (darkMode) {
@@ -128,10 +133,12 @@ function App() {
     }
   }, [colorTheme]);
 
-  // Load from Local Storage
   useEffect(() => {
      const savedTasks = localStorage.getItem('taskflow_tasks');
      if (savedTasks) setTasks(JSON.parse(savedTasks));
+
+     const savedDeleted = localStorage.getItem('taskflow_deleted_tasks');
+     if (savedDeleted) setDeletedTasks(JSON.parse(savedDeleted));
 
      const savedDocs = localStorage.getItem('taskflow_docs');
      if (savedDocs) setDocs(JSON.parse(savedDocs));
@@ -140,16 +147,41 @@ function App() {
      if (savedRules) setAutomations(JSON.parse(savedRules));
   }, []);
 
-  // Save to Local Storage
   useEffect(() => localStorage.setItem('taskflow_tasks', JSON.stringify(tasks)), [tasks]);
+  useEffect(() => localStorage.setItem('taskflow_deleted_tasks', JSON.stringify(deletedTasks)), [deletedTasks]);
   useEffect(() => localStorage.setItem('taskflow_docs', JSON.stringify(docs)), [docs]);
   useEffect(() => localStorage.setItem('taskflow_automations', JSON.stringify(automations)), [automations]);
+
+  // Feature 6: Global Keyboard Listener
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+       if (e.key === '?') {
+         setIsShortcutsModalOpen(true);
+       }
+       if (e.key.toLowerCase() === 'n') {
+         handleCreateTask();
+       }
+       if (e.key === '/') {
+         e.preventDefault();
+         const searchInput = document.querySelector('input[placeholder="Search tasks..."]') as HTMLInputElement;
+         searchInput?.focus();
+       }
+       if (e.key === 'Escape') {
+         setIsModalOpen(false);
+         setIsAutomationModalOpen(false);
+         setIsShortcutsModalOpen(false);
+       }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
   };
 
-  // --- Automation Logic ---
   const runAutomations = (task: Task) => {
     let updatedTask = { ...task };
     let triggered = false;
@@ -167,14 +199,11 @@ function App() {
            updatedTask.assignee = rule.actionValue;
            showToast(`Automation: Assigned to ${rule.actionValue}`, 'info');
         }
-        // Comment addition logic handled separately to avoid infinite loops if comment triggers something (not implemented yet)
       }
     });
 
     return { updatedTask, triggered };
   };
-
-  // --- Actions ---
 
   const handleCreateTask = () => {
     setCurrentTask(undefined);
@@ -188,11 +217,9 @@ function App() {
 
   const handleSaveTask = (taskData: Partial<Task>) => {
     if (taskData.id) {
-      // Update existing
       setTasks(prev => prev.map(t => t.id === taskData.id ? { ...t, ...taskData } as Task : t));
       showToast('Task updated successfully');
     } else {
-      // Create new
       const newTask: Task = {
         id: Date.now().toString(),
         createdAt: Date.now(),
@@ -204,34 +231,59 @@ function App() {
         tags: taskData.tags || [],
         comments: [],
         assignee: taskData.assignee || 'You', 
-        estimatedTime: taskData.estimatedTime
+        estimatedTime: taskData.estimatedTime,
+        blockedBy: taskData.blockedBy
       };
       setTasks(prev => [...prev, newTask]);
       showToast('New task created', 'success');
     }
   };
 
+  // Feature 3: Move to Trash
   const handleDeleteTask = (id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
-    showToast('Task deleted', 'info');
+    const taskToDelete = tasks.find(t => t.id === id);
+    if (taskToDelete) {
+       setDeletedTasks(prev => [taskToDelete, ...prev]);
+       setTasks(prev => prev.filter(t => t.id !== id));
+       showToast('Task moved to recycle bin', 'info');
+    }
+  };
+
+  // Feature 3: Trash Actions
+  const handleRestoreTask = (id: string) => {
+     const task = deletedTasks.find(t => t.id === id);
+     if (task) {
+        setTasks(prev => [...prev, task]);
+        setDeletedTasks(prev => prev.filter(t => t.id !== id));
+        showToast('Task restored');
+     }
+  };
+
+  const handlePermDeleteTask = (id: string) => {
+     if(window.confirm('This action cannot be undone. Delete forever?')) {
+        setDeletedTasks(prev => prev.filter(t => t.id !== id));
+        showToast('Task permanently deleted');
+     }
+  };
+
+  const handleEmptyTrash = () => {
+     if(window.confirm('Empty recycle bin?')) {
+        setDeletedTasks([]);
+        showToast('Recycle bin emptied');
+     }
   };
 
   const handleTaskMove = (taskId: string, newStatus: TaskStatus) => {
     let task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    // Apply status change
     let updatedTask = { ...task, status: newStatus };
-
-    // Run Automations
     const { updatedTask: automatedTask, triggered } = runAutomations(updatedTask);
 
     setTasks(prev => prev.map(t => t.id === taskId ? automatedTask : t));
     
     if (newStatus === TaskStatus.DONE) {
       showToast('Task completed! 🎉', 'success');
-    } else if (triggered) {
-      // Toast handled in runAutomations
     }
   };
 
@@ -250,7 +302,6 @@ function App() {
     });
 
     setTasks(prev => prev.map(t => t.id === taskId ? updateTaskWithComment(t) : t));
-
     if (currentTask && currentTask.id === taskId) {
       setCurrentTask(prev => prev ? updateTaskWithComment(prev) : prev);
     }
@@ -259,30 +310,21 @@ function App() {
   const handleAddReaction = (taskId: string, commentId: string, emoji: string) => {
      setTasks(prev => prev.map(t => {
         if (t.id !== taskId || !t.comments) return t;
-        
         const updatedComments = t.comments.map(c => {
            if (c.id !== commentId) return c;
-           
            const currentReactions = c.reactions || {};
            const existing = currentReactions[emoji] || { count: 0, userReacted: false, emoji };
-           
            return {
               ...c,
               reactions: {
                  ...currentReactions,
-                 [emoji]: {
-                    ...existing,
-                    count: existing.count + 1,
-                    userReacted: true
-                 }
+                 [emoji]: { ...existing, count: existing.count + 1, userReacted: true }
               }
            };
         });
-        
         if (currentTask && currentTask.id === taskId) {
            setCurrentTask({ ...t, comments: updatedComments });
         }
-        
         return { ...t, comments: updatedComments };
      }));
   };
@@ -301,13 +343,14 @@ function App() {
   };
 
   const handleClearDoneTasks = () => {
-    if (window.confirm('Are you sure you want to remove all completed tasks?')) {
+    if (window.confirm('Are you sure you want to move all completed tasks to trash?')) {
+      const doneTasks = tasks.filter(t => t.status === TaskStatus.DONE);
+      setDeletedTasks(prev => [...prev, ...doneTasks]);
       setTasks(prev => prev.filter(t => t.status !== TaskStatus.DONE));
-      showToast('Completed tasks cleared', 'info');
+      showToast('Completed tasks moved to trash', 'info');
     }
   };
 
-  // --- Docs Handlers ---
   const handleSaveDoc = (doc: ProjectDoc) => {
      if (docs.find(d => d.id === doc.id)) {
         setDocs(prev => prev.map(d => d.id === doc.id ? doc : d));
@@ -325,7 +368,6 @@ function App() {
      }
   };
 
-  // --- Automation Handlers ---
   const handleAddRule = (rule: AutomationRule) => {
     setAutomations(prev => [...prev, rule]);
     showToast('Automation rule created');
@@ -339,7 +381,6 @@ function App() {
     setAutomations(prev => prev.map(r => r.id === id ? { ...r, isActive: !r.isActive } : r));
   };
 
-  // --- Export ---
   const handleExportCSV = () => {
     const headers = ['ID', 'Title', 'Description', 'Status', 'Priority', 'Due Date', 'Assignee', 'Estimated Time', 'Created At'];
     const rows = tasks.map(t => [
@@ -353,10 +394,7 @@ function App() {
       t.estimatedTime || '',
       new Date(t.createdAt).toISOString()
     ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -387,12 +425,9 @@ function App() {
   const handleGenerateSprint = async () => {
     const goal = prompt("What is the goal of this sprint? (e.g., 'Build the user dashboard')");
     if (!goal) return;
-
     showToast("AI is generating your sprint plan...", 'info');
-    
     const users = Array.from(new Set(tasks.map(t => t.assignee).filter(Boolean))) as string[];
     const generatedTasks = await generateSprintTasks(goal, users.length ? users : ['Alex', 'Sam', 'Taylor']);
-
     if (generatedTasks.length > 0) {
       const newTasks = generatedTasks.map((t, index) => ({
         ...t,
@@ -401,7 +436,6 @@ function App() {
         comments: [],
         dueDate: new Date().toISOString()
       } as Task));
-
       setTasks(prev => [...prev, ...newTasks]);
       showToast(`Generated ${newTasks.length} tasks for your sprint!`, 'success');
     } else {
@@ -415,13 +449,10 @@ function App() {
       showToast("No unassigned tasks found.", 'info');
       return;
     }
-
     showToast("AI is assigning tasks...", 'info');
     const users = Array.from(new Set(tasks.map(t => t.assignee).filter(a => a && a !== 'Unassigned' && a !== 'You'))) as string[];
     const availableUsers = users.length > 0 ? users : ['Alex', 'Sam', 'Taylor', 'Jordan'];
-    
     const assignments = await autoAssignTasks(unassigned, availableUsers);
-    
     let count = 0;
     setTasks(prev => prev.map(t => {
       if (assignments[t.id]) {
@@ -430,7 +461,6 @@ function App() {
       }
       return t;
     }));
-
     if (count > 0) {
       showToast(`Auto-assigned ${count} tasks.`, 'success');
     } else {
@@ -452,7 +482,10 @@ function App() {
       onExportCSV={handleExportCSV}
       onGenerateSprint={handleGenerateSprint}
       onOpenAutomations={() => setIsAutomationModalOpen(true)}
+      onOpenShortcuts={() => setIsShortcutsModalOpen(true)}
       tasks={tasks}
+      zenMode={zenMode}
+      toggleZenMode={() => setZenMode(!zenMode)}
     >
       {currentView === 'board' && (
         <TaskBoard 
@@ -500,6 +533,15 @@ function App() {
       {currentView === 'reports' && (
         <Reports tasks={tasks} />
       )}
+
+      {currentView === 'trash' && (
+         <TrashView 
+           deletedTasks={deletedTasks}
+           onRestore={handleRestoreTask}
+           onPermDelete={handlePermDeleteTask}
+           onEmptyTrash={handleEmptyTrash}
+         />
+      )}
       
       <TaskModal
         isOpen={isModalOpen}
@@ -510,6 +552,7 @@ function App() {
         onAddComment={handleAddComment}
         onAddReaction={handleAddReaction}
         task={currentTask}
+        allTasks={tasks}
       />
 
       <AutomationModal
@@ -519,6 +562,11 @@ function App() {
         onAddRule={handleAddRule}
         onDeleteRule={handleDeleteRule}
         onToggleRule={handleToggleRule}
+      />
+
+      <ShortcutsModal 
+         isOpen={isShortcutsModalOpen}
+         onClose={() => setIsShortcutsModalOpen(false)}
       />
 
       {toast && (
