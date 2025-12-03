@@ -6,6 +6,7 @@ import Reports from './components/Reports';
 import TaskModal from './components/TaskModal';
 import Toast from './components/Toast';
 import { Task, TaskStatus, TaskPriority, Comment } from './types';
+import { generateSprintTasks, autoAssignTasks } from './services/geminiService';
 
 // Mock Data
 const INITIAL_TASKS: Task[] = [
@@ -157,7 +158,7 @@ function App() {
         dueDate: taskData.dueDate || new Date().toISOString(),
         tags: taskData.tags || [],
         comments: [],
-        assignee: 'You', // Default assignee
+        assignee: taskData.assignee || 'You', 
         estimatedTime: taskData.estimatedTime
       };
       setTasks(prev => [...prev, newTask]);
@@ -198,21 +199,19 @@ function App() {
     }
   };
 
-  // Feature 1: Duplicate Task
   const handleDuplicateTask = (task: Task) => {
     const newTask: Task = {
       ...task,
       id: Date.now().toString(),
       title: `${task.title} (Copy)`,
       createdAt: Date.now(),
-      comments: [], // Don't copy comments
+      comments: [],
     };
     setTasks(prev => [...prev, newTask]);
     showToast('Task duplicated');
     setIsModalOpen(false);
   };
 
-  // Feature 2: Clear Done
   const handleClearDoneTasks = () => {
     if (window.confirm('Are you sure you want to remove all completed tasks?')) {
       setTasks(prev => prev.filter(t => t.status !== TaskStatus.DONE));
@@ -220,12 +219,11 @@ function App() {
     }
   };
 
-  // Feature 3: Export CSV
   const handleExportCSV = () => {
     const headers = ['ID', 'Title', 'Description', 'Status', 'Priority', 'Due Date', 'Assignee', 'Estimated Time', 'Created At'];
     const rows = tasks.map(t => [
       t.id,
-      `"${t.title.replace(/"/g, '""')}"`, // Escape quotes
+      `"${t.title.replace(/"/g, '""')}"`,
       `"${t.description.replace(/"/g, '""')}"`,
       t.status,
       t.priority,
@@ -248,7 +246,6 @@ function App() {
     showToast('Tasks exported to CSV');
   };
 
-  // Feature 4: Quick Add
   const handleQuickAddTask = (title: string, status: TaskStatus) => {
     const newTask: Task = {
       id: Date.now().toString(),
@@ -266,6 +263,63 @@ function App() {
     showToast('Task added quickly', 'success');
   };
 
+  // Feature 7: AI Sprint Generation
+  const handleGenerateSprint = async () => {
+    const goal = prompt("What is the goal of this sprint? (e.g., 'Build the user dashboard')");
+    if (!goal) return;
+
+    showToast("AI is generating your sprint plan...", 'info');
+    
+    // Get list of existing users for better assignment
+    const users = Array.from(new Set(tasks.map(t => t.assignee).filter(Boolean))) as string[];
+    const generatedTasks = await generateSprintTasks(goal, users.length ? users : ['Alex', 'Sam', 'Taylor']);
+
+    if (generatedTasks.length > 0) {
+      const newTasks = generatedTasks.map((t, index) => ({
+        ...t,
+        id: (Date.now() + index).toString(),
+        createdAt: Date.now(),
+        comments: [],
+        dueDate: new Date().toISOString()
+      } as Task));
+
+      setTasks(prev => [...prev, ...newTasks]);
+      showToast(`Generated ${newTasks.length} tasks for your sprint!`, 'success');
+    } else {
+      showToast("Could not generate sprint. Try again.", 'error');
+    }
+  };
+
+  // Feature 11: AI Auto-Assign
+  const handleAutoAssign = async () => {
+    const unassigned = tasks.filter(t => !t.assignee || t.assignee === 'Unassigned' || t.assignee === 'You');
+    if (unassigned.length === 0) {
+      showToast("No unassigned tasks found.", 'info');
+      return;
+    }
+
+    showToast("AI is assigning tasks...", 'info');
+    const users = Array.from(new Set(tasks.map(t => t.assignee).filter(a => a && a !== 'Unassigned' && a !== 'You'))) as string[];
+    const availableUsers = users.length > 0 ? users : ['Alex', 'Sam', 'Taylor', 'Jordan'];
+    
+    const assignments = await autoAssignTasks(unassigned, availableUsers);
+    
+    let count = 0;
+    setTasks(prev => prev.map(t => {
+      if (assignments[t.id]) {
+        count++;
+        return { ...t, assignee: assignments[t.id] };
+      }
+      return t;
+    }));
+
+    if (count > 0) {
+      showToast(`Auto-assigned ${count} tasks.`, 'success');
+    } else {
+      showToast("Could not assign tasks.", 'error');
+    }
+  };
+
   return (
     <Layout 
       onNewTask={handleCreateTask}
@@ -278,6 +332,8 @@ function App() {
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       onExportCSV={handleExportCSV}
+      onGenerateSprint={handleGenerateSprint}
+      tasks={tasks}
     >
       {currentView === 'board' && (
         <TaskBoard 
@@ -287,6 +343,7 @@ function App() {
           searchQuery={searchQuery}
           onQuickAddTask={handleQuickAddTask}
           onClearDoneTasks={handleClearDoneTasks}
+          onAutoAssign={handleAutoAssign}
         />
       )}
       

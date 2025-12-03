@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Task, TaskPriority, TaskStatus, Comment } from '../types';
 import Button from './Button';
-import { enhanceTaskDescription, suggestSubtasks } from '../services/geminiService';
+import { enhanceTaskDescription, suggestSubtasks, summarizeComments } from '../services/geminiService';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -9,7 +9,7 @@ interface TaskModalProps {
   onSave: (task: Partial<Task>) => void;
   onDelete?: (id: string) => void;
   onAddComment?: (taskId: string, text: string) => void;
-  onDuplicate?: (task: Task) => void; // Feature 1
+  onDuplicate?: (task: Task) => void;
   task?: Task;
 }
 
@@ -21,13 +21,15 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
   const [dueDate, setDueDate] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [estimatedTime, setEstimatedTime] = useState<number | ''>(''); // Feature 6
+  const [estimatedTime, setEstimatedTime] = useState<number | ''>(''); 
   
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [suggestedSubtasks, setSuggestedSubtasks] = useState<string[]>([]);
   
   // Comment State
   const [newComment, setNewComment] = useState('');
+  const [commentSummary, setCommentSummary] = useState(''); // Feature 8
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,6 +42,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       setTags(task.tags || []);
       setEstimatedTime(task.estimatedTime || '');
       setSuggestedSubtasks([]);
+      setCommentSummary('');
     } else {
       // Reset for new task
       setTitle('');
@@ -50,6 +53,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       setTags([]);
       setEstimatedTime('');
       setSuggestedSubtasks([]);
+      setCommentSummary('');
     }
     setNewComment('');
     setTagInput('');
@@ -97,6 +101,14 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
     }
   };
 
+  const handleSummarizeComments = async () => {
+    if (!task?.comments?.length) return;
+    setIsSummarizing(true);
+    const summary = await summarizeComments(task.comments);
+    setCommentSummary(summary);
+    setIsSummarizing(false);
+  };
+
   const handlePostComment = () => {
     if (newComment.trim() && task && onAddComment) {
       onAddComment(task.id, newComment);
@@ -141,7 +153,6 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
             {task ? 'Edit Task' : 'New Task'}
           </h2>
           <div className="flex items-center space-x-2">
-            {/* Feature 1: Duplicate Button */}
             {task && onDuplicate && (
                <button 
                  onClick={() => onDuplicate(task)}
@@ -295,10 +306,28 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
             )}
           </div>
 
-          {/* Comments Section - Only show for existing tasks */}
+          {/* Comments Section */}
           {task && (
             <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Activity & Comments</h3>
+              <div className="flex justify-between items-center mb-3">
+                 <h3 className="text-sm font-medium text-gray-900 dark:text-white">Activity & Comments</h3>
+                 {/* Feature 8: Summarize Comments */}
+                 {task.comments && task.comments.length > 2 && (
+                    <button 
+                       onClick={handleSummarizeComments} 
+                       disabled={isSummarizing}
+                       className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center"
+                    >
+                       {isSummarizing ? 'Summarizing...' : 'Summarize Thread'}
+                    </button>
+                 )}
+              </div>
+              
+              {commentSummary && (
+                <div className="mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-xs text-indigo-800 dark:text-indigo-200 border border-indigo-100 dark:border-indigo-800">
+                   <strong>AI Summary:</strong> {commentSummary}
+                </div>
+              )}
               
               <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 sm:p-4 mb-3 max-h-48 overflow-y-auto custom-scrollbar">
                 {!task.comments || task.comments.length === 0 ? (

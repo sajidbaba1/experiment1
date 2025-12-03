@@ -1,11 +1,28 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Task, TaskStatus, TaskPriority } from '../types';
+import Button from './Button';
+import { generateProjectReport } from '../services/geminiService';
 
 interface ReportsProps {
   tasks: Task[];
 }
 
 const Reports: React.FC<ReportsProps> = ({ tasks }) => {
+  const [reportText, setReportText] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerateReport = async () => {
+    setIsGenerating(true);
+    try {
+      const report = await generateProjectReport(tasks);
+      setReportText(report);
+    } catch (e) {
+      setReportText('Failed to generate report.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter(t => t.status === TaskStatus.DONE).length;
   const inProgressTasks = tasks.filter(t => t.status === TaskStatus.IN_PROGRESS).length;
@@ -43,7 +60,7 @@ const Reports: React.FC<ReportsProps> = ({ tasks }) => {
        const tDate = new Date(t.createdAt).toISOString().split('T')[0];
        return tDate === date;
     }).length;
-    return count + (count === 0 && Math.random() > 0.8 ? 1 : 0); // Slight randomization for empty demo states
+    return count + (count === 0 && Math.random() > 0.8 ? 1 : 0); 
   });
   const maxTrend = Math.max(...trendData, 4);
 
@@ -54,13 +71,11 @@ const Reports: React.FC<ReportsProps> = ({ tasks }) => {
     const weeks = 52;
     const days = 7;
     
-    // Calculate start date (52 weeks ago, aligned to Sunday)
     const startDate = new Date(today);
     startDate.setDate(today.getDate() - (weeks * 7));
     const dayOfWeek = startDate.getDay();
     startDate.setDate(startDate.getDate() - dayOfWeek);
 
-    // Group tasks by date
     const taskDates: Record<string, number> = {};
     tasks.forEach(t => {
         const d = new Date(t.createdAt).toISOString().split('T')[0];
@@ -73,21 +88,11 @@ const Reports: React.FC<ReportsProps> = ({ tasks }) => {
       for (let d = 0; d < days; d++) {
         const currentDate = new Date(startDate);
         currentDate.setDate(startDate.getDate() + (w * 7) + d);
-        
-        // Stop if future
         if (currentDate > today) continue;
-
         const dateStr = currentDate.toISOString().split('T')[0];
         const count = taskDates[dateStr] || 0;
         if (count > maxCount) maxCount = count;
-
-        mapData.push({
-          x: w,
-          y: d,
-          date: dateStr,
-          count,
-          dayIndex: d // 0 = Sun, 6 = Sat
-        });
+        mapData.push({ x: w, y: d, date: dateStr, count, dayIndex: d });
       }
     }
     return { mapData, maxCount };
@@ -95,10 +100,7 @@ const Reports: React.FC<ReportsProps> = ({ tasks }) => {
 
   const { mapData: heatmapData, maxCount: heatmapMax } = generateHeatmapData();
 
-
-  // -- SVG Helpers --
-  
-  // Donut Chart Logic
+  // Donut Chart Helpers
   let accumulatedPercent = 0;
   const donutSegments = statusCounts.map((segment) => {
     const percent = segment.value / totalTasks;
@@ -119,10 +121,9 @@ const Reports: React.FC<ReportsProps> = ({ tasks }) => {
     );
   });
 
-  // Polyline for Line Chart
   const polylinePoints = trendData.map((val, idx) => {
     const x = (idx / (trendData.length - 1)) * 100;
-    const y = 100 - (val / maxTrend) * 80; // keep some padding top
+    const y = 100 - (val / maxTrend) * 80;
     return `${x},${y}`;
   }).join(' ');
 
@@ -130,6 +131,27 @@ const Reports: React.FC<ReportsProps> = ({ tasks }) => {
   return (
     <div className="p-6 space-y-6">
       
+      {/* Feature 9: AI Executive Summary */}
+      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 p-6 rounded-xl border border-indigo-100 dark:border-indigo-800">
+         <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-lg font-bold text-indigo-900 dark:text-indigo-100 flex items-center">
+                 <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                 AI Executive Briefing
+              </h3>
+              <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-1">Generate a real-time status report of your project health.</p>
+            </div>
+            <Button onClick={handleGenerateReport} isLoading={isGenerating}>
+              {reportText ? 'Regenerate' : 'Generate Report'}
+            </Button>
+         </div>
+         {reportText && (
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm text-sm text-gray-700 dark:text-gray-200 prose dark:prose-invert max-w-none">
+               <pre className="whitespace-pre-wrap font-sans">{reportText}</pre>
+            </div>
+         )}
+      </div>
+
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
          {[
@@ -241,7 +263,6 @@ const Reports: React.FC<ReportsProps> = ({ tasks }) => {
                     
                     let colorClass = "fill-gray-100 dark:fill-gray-700";
                     if (cell.count > 0) {
-                      // Calculate intensity relative to max (or a hardcoded realistic max like 5)
                       const intensity = Math.min(cell.count / Math.max(heatmapMax, 3), 1);
                       if (intensity < 0.3) colorClass = "fill-primary-200 dark:fill-primary-900";
                       else if (intensity < 0.6) colorClass = "fill-primary-400 dark:fill-primary-700";

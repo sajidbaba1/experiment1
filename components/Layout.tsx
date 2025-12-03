@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import AiAssistant from './AiAssistant';
+import { Task } from '../types';
 
 export type ViewType = 'board' | 'list' | 'reports';
 
@@ -14,6 +16,8 @@ interface LayoutProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onExportCSV: () => void;
+  onGenerateSprint: () => void; // Feature 7
+  tasks: Task[]; // Required for Chatbot context
 }
 
 const QUOTES = [
@@ -35,19 +39,20 @@ const Layout: React.FC<LayoutProps> = ({
   onViewChange,
   searchQuery,
   onSearchChange,
-  onExportCSV
+  onExportCSV,
+  onGenerateSprint,
+  tasks
 }) => {
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const themeMenuRef = useRef<HTMLDivElement>(null);
   const [quote, setQuote] = useState("");
 
   useEffect(() => {
-    // Feature 9: Random Quote
     setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
   }, []);
 
-  // Close theme menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (themeMenuRef.current && !themeMenuRef.current.contains(event.target as Node)) {
@@ -100,14 +105,23 @@ const Layout: React.FC<LayoutProps> = ({
          {currentView === 'reports' && <span className="absolute right-4 w-1.5 h-1.5 rounded-full bg-primary-600 dark:bg-primary-400"></span>}
       </button>
 
-      {/* Feature 3: Export CSV Button */}
-      <button 
-        onClick={onExportCSV}
-        className="w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg mb-1 transition-all duration-200 group text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white"
-      >
-         <svg className="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-         Export CSV
-      </button>
+      <div className="pt-4 border-t border-gray-100 dark:border-gray-700 mt-2 space-y-1">
+        <button 
+          onClick={onGenerateSprint}
+          className="w-full flex items-center px-4 py-3 text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 dark:from-purple-400 dark:to-indigo-400 hover:bg-purple-50 dark:hover:bg-purple-900/10 rounded-lg transition-all"
+        >
+          <svg className="w-5 h-5 mr-3 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          Magic Sprint
+        </button>
+
+        <button 
+          onClick={onExportCSV}
+          className="w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white"
+        >
+          <svg className="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+          Export CSV
+        </button>
+      </div>
     </>
   );
 
@@ -139,7 +153,6 @@ const Layout: React.FC<LayoutProps> = ({
             <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
                <NavLinks />
             </nav>
-            {/* Feature 9: Quote Widget */}
             <div className="p-4 bg-gray-50 dark:bg-gray-700/30 m-4 rounded-xl">
                <p className="text-xs italic text-gray-600 dark:text-gray-400">"{quote}"</p>
             </div>
@@ -161,7 +174,6 @@ const Layout: React.FC<LayoutProps> = ({
            <NavLinks />
         </nav>
 
-        {/* Feature 9: Quote Widget */}
         <div className="px-4 pb-4">
             <div className="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-700">
                <div className="flex items-center mb-2">
@@ -174,9 +186,8 @@ const Layout: React.FC<LayoutProps> = ({
 
         <div className="p-4 border-t border-gray-100 dark:border-gray-700">
            <div className="bg-gradient-to-r from-primary-600 to-indigo-600 rounded-xl p-4 text-white shadow-lg">
-              <h4 className="font-bold text-sm mb-1">Upgrade to Pro</h4>
-              <p className="text-xs text-primary-100 mb-3">Get unlimited tasks and AI insights.</p>
-              <button className="w-full py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-xs font-bold rounded shadow transition-colors">Upgrade Now</button>
+              <h4 className="font-bold text-sm mb-1">Premium Plan</h4>
+              <p className="text-xs text-primary-100 mb-3">AI features enabled.</p>
            </div>
         </div>
       </aside>
@@ -227,7 +238,6 @@ const Layout: React.FC<LayoutProps> = ({
                <button 
                  onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
                  className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
-                 title="Change Theme"
                >
                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
@@ -235,7 +245,7 @@ const Layout: React.FC<LayoutProps> = ({
                </button>
 
                {isThemeMenuOpen && (
-                 <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-4 z-50 animate-fade-in-down">
+                 <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-4 z-50">
                     <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Dark Mode</span>
                       <button 
@@ -292,6 +302,25 @@ const Layout: React.FC<LayoutProps> = ({
         {/* Content Area */}
         <div className="flex-1 overflow-x-hidden overflow-y-auto relative z-0">
            {children}
+        </div>
+
+        {/* Floating Chat Button */}
+        <div className="fixed bottom-6 right-6 z-40">
+           {isChatOpen ? (
+             <AiAssistant tasks={tasks} isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+           ) : (
+             <button
+               onClick={() => setIsChatOpen(true)}
+               className="w-14 h-14 bg-gradient-to-r from-primary-600 to-indigo-600 rounded-full shadow-lg flex items-center justify-center text-white hover:shadow-xl hover:scale-105 transition-all focus:outline-none focus:ring-4 focus:ring-primary-300"
+               title="Open AI Assistant"
+             >
+               <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+               <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+               </span>
+             </button>
+           )}
         </div>
       </main>
     </div>

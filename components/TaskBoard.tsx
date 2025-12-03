@@ -9,6 +9,7 @@ interface TaskBoardProps {
   searchQuery: string;
   onQuickAddTask: (title: string, status: TaskStatus) => void;
   onClearDoneTasks: () => void;
+  onAutoAssign: () => void; // Feature 11
 }
 
 type SortOption = 'priority' | 'dueDate' | 'created';
@@ -19,7 +20,8 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
   onTaskMove, 
   searchQuery, 
   onQuickAddTask,
-  onClearDoneTasks 
+  onClearDoneTasks,
+  onAutoAssign
 }) => {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('priority');
@@ -91,7 +93,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
     }
   };
 
-  // Feature 4: Quick Add Logic
   const handleQuickAddChange = (status: string, value: string) => {
     setQuickAddTitles(prev => ({...prev, [status]: value}));
   };
@@ -107,59 +108,68 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
   return (
     <div className="flex flex-col h-full">
        {/* Sorting & Filter Toolbar */}
-       <div className="px-4 sm:px-6 py-3 flex flex-wrap items-center gap-4 shrink-0 border-b border-transparent">
-          <div className="flex items-center space-x-2">
-             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sort:</span>
-             <div className="relative inline-block text-left">
-                <select 
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 dark:text-gray-200 cursor-pointer"
-                >
-                   <option value="priority">Priority</option>
-                   <option value="dueDate">Due Date</option>
-                   <option value="created">Recently Added</option>
-                </select>
-             </div>
-          </div>
+       <div className="px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4 shrink-0 border-b border-transparent">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center space-x-2">
+               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sort:</span>
+               <div className="relative inline-block text-left">
+                  <select 
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 dark:text-gray-200 cursor-pointer"
+                  >
+                     <option value="priority">Priority</option>
+                     <option value="dueDate">Due Date</option>
+                     <option value="created">Recently Added</option>
+                  </select>
+               </div>
+            </div>
 
-          <div className="flex items-center space-x-2">
-             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tag:</span>
-             <div className="relative inline-block text-left">
-                <select 
-                  value={filterTag}
-                  onChange={(e) => setFilterTag(e.target.value)}
-                  className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 dark:text-gray-200 cursor-pointer"
-                >
-                   <option value="all">All Tags</option>
-                   {allTags.map(tag => (
-                     <option key={tag} value={tag}>{tag}</option>
-                   ))}
-                </select>
-             </div>
-          </div>
+            <div className="flex items-center space-x-2">
+               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tag:</span>
+               <div className="relative inline-block text-left">
+                  <select 
+                    value={filterTag}
+                    onChange={(e) => setFilterTag(e.target.value)}
+                    className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 dark:text-gray-200 cursor-pointer"
+                  >
+                     <option value="all">All Tags</option>
+                     {allTags.map(tag => (
+                       <option key={tag} value={tag}>{tag}</option>
+                     ))}
+                  </select>
+               </div>
+            </div>
 
-          {/* Feature 5: Assignee Filter */}
-          <div className="flex items-center space-x-2">
-             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Assignee:</span>
-             <div className="relative inline-block text-left">
-                <select 
-                  value={filterAssignee}
-                  onChange={(e) => setFilterAssignee(e.target.value)}
-                  className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 dark:text-gray-200 cursor-pointer"
-                >
-                   <option value="all">All People</option>
-                   {allAssignees.map(a => (
-                     <option key={a} value={a}>{a}</option>
-                   ))}
-                </select>
-             </div>
+            <div className="flex items-center space-x-2">
+               <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Assignee:</span>
+               <div className="relative inline-block text-left">
+                  <select 
+                    value={filterAssignee}
+                    onChange={(e) => setFilterAssignee(e.target.value)}
+                    className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 dark:text-gray-200 cursor-pointer"
+                  >
+                     <option value="all">All People</option>
+                     {allAssignees.map(a => (
+                       <option key={a} value={a}>{a}</option>
+                     ))}
+                  </select>
+               </div>
+            </div>
           </div>
+          
+          {/* Feature 11: Auto Assign Button */}
+          <button 
+             onClick={onAutoAssign}
+             className="text-xs flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors border border-indigo-200 dark:border-indigo-800"
+          >
+             <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+             Auto Assign
+          </button>
        </div>
 
        {/* Board */}
        <div className="flex-1 p-4 sm:p-6 pt-0 overflow-x-auto overflow-y-hidden mt-4">
-         {/* Responsive Container: Allows snapping on mobile, free scroll on desktop */}
          <div className="flex h-full space-x-4 sm:space-x-6 w-full snap-x snap-mandatory sm:snap-none pb-2">
             {columns.map((status) => {
               const columnTasks = getTasksByStatus(status);
@@ -170,7 +180,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, status)}
                 >
-                  {/* Column Header */}
                   <div className="flex items-center justify-between mb-3 sm:mb-4 px-1">
                     <div className="flex items-center space-x-2">
                       <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 transition-colors uppercase tracking-wide">{status}</h3>
@@ -178,7 +187,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                         {columnTasks.length}
                       </span>
                     </div>
-                    {/* Feature 2: Clear Done Button */}
                     {status === TaskStatus.DONE && columnTasks.length > 0 && (
                       <button 
                         onClick={onClearDoneTasks}
@@ -190,7 +198,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                     )}
                   </div>
 
-                  {/* Column Content */}
                   <div className={`flex-1 bg-gray-100/50 dark:bg-gray-800/50 rounded-xl p-2 sm:p-3 space-y-3 overflow-y-auto custom-scrollbar border border-gray-100/50 dark:border-gray-700/50 transition-colors ${draggedTaskId ? 'ring-2 ring-dashed ring-gray-200 dark:ring-gray-700' : ''}`}>
                     {columnTasks.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-24 sm:h-32 text-gray-400 dark:text-gray-600 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg m-1 transition-colors">
@@ -211,7 +218,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
                     )}
                   </div>
                   
-                  {/* Feature 4: Quick Add Input */}
                   <div className="mt-3 px-1">
                     <div className="relative group">
                        <input 
@@ -234,7 +240,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
               );
             })}
             
-            {/* Spacer for mobile */}
             <div className="w-4 sm:hidden flex-shrink-0"></div>
          </div>
       </div>

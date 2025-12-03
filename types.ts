@@ -40,3 +40,17 @@ export interface CreateTaskDTO {
   dueDate: string;
   tags: string[];
 }
+
+// AI Specific Types
+export interface AIChatMessage {
+  id: string;
+  role: 'user' | 'model';
+  text: string;
+  timestamp: number;
+}
+
+export interface AssigneeRecommendation {
+  taskId: string;
+  suggestedAssignee: string;
+  reason: string;
+}
