@@ -56,8 +56,40 @@ function App() {
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentTask, setCurrentTask] = useState<Task | undefined>(undefined);
+  
+  // Theme State
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('taskflow_dark_mode');
+    return saved ? JSON.parse(saved) : false;
+  });
+  
+  const [colorTheme, setColorTheme] = useState(() => {
+    return localStorage.getItem('taskflow_color_theme') || 'blue';
+  });
 
-  // Load tasks from local storage on mount (optional enhancement, kept simple here with mock data fallback)
+  // Apply Theme Effects
+  useEffect(() => {
+    localStorage.setItem('taskflow_dark_mode', JSON.stringify(darkMode));
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  useEffect(() => {
+    localStorage.setItem('taskflow_color_theme', colorTheme);
+    // Remove all theme classes first
+    const themes = ['theme-blue', 'theme-purple', 'theme-green', 'theme-orange', 'theme-pink'];
+    document.body.classList.remove(...themes);
+    
+    // Add new theme class if not default blue
+    if (colorTheme !== 'blue') {
+      document.body.classList.add(`theme-${colorTheme}`);
+    }
+  }, [colorTheme]);
+
+  // Load tasks from local storage on mount
   useEffect(() => {
      const saved = localStorage.getItem('taskflow_tasks');
      if (saved) {
@@ -110,7 +142,13 @@ function App() {
   };
 
   return (
-    <Layout onNewTask={handleCreateTask}>
+    <Layout 
+      onNewTask={handleCreateTask}
+      darkMode={darkMode}
+      toggleDarkMode={() => setDarkMode(!darkMode)}
+      colorTheme={colorTheme}
+      setColorTheme={setColorTheme}
+    >
       <TaskBoard tasks={tasks} onTaskClick={handleEditTask} />
       
       <TaskModal

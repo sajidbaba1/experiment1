@@ -73,18 +73,18 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       <div 
-        className="fixed inset-0 bg-gray-900 bg-opacity-40 transition-opacity backdrop-blur-sm"
+        className="fixed inset-0 bg-gray-900 bg-opacity-40 dark:bg-opacity-80 transition-opacity backdrop-blur-sm"
         onClick={onClose}
       ></div>
 
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl transform transition-all flex flex-col max-h-[90vh] z-10">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl transform transition-all flex flex-col max-h-[90vh] z-10 border border-gray-100 dark:border-gray-700">
         
         {/* Header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900">
+        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
             {task ? 'Edit Task' : 'New Task'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
@@ -94,13 +94,13 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
           
           {/* Title Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Task Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Redesign Landing Page"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow outline-none text-gray-900 font-medium placeholder-gray-400"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow outline-none text-gray-900 dark:text-white dark:bg-gray-700 font-medium placeholder-gray-400"
               autoFocus
             />
           </div>
@@ -108,11 +108,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
              {/* Status */}
              <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as TaskStatus)}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm text-gray-900 dark:text-white"
               >
                 {Object.values(TaskStatus).map((s) => (
                   <option key={s} value={s}>{s}</option>
@@ -122,11 +122,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
 
             {/* Priority */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm text-gray-900 dark:text-white"
               >
                 {Object.values(TaskPriority).map((p) => (
                   <option key={p} value={p}>{p}</option>
@@ -136,12 +136,12 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
 
             {/* Due Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm text-gray-600"
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm text-gray-600 dark:text-gray-300"
               />
             </div>
           </div>
@@ -149,12 +149,12 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
           {/* Description + AI */}
           <div className="relative">
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
               <button 
                 type="button"
                 onClick={handleAiEnhance}
                 disabled={isAiLoading || !title}
-                className="flex items-center text-xs font-semibold text-purple-600 hover:text-purple-700 disabled:opacity-50 transition-colors"
+                className="flex items-center text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 disabled:opacity-50 transition-colors"
               >
                 {isAiLoading ? (
                    <span className="flex items-center">
@@ -173,15 +173,15 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={6}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow outline-none text-sm text-gray-700 resize-none bg-gray-50"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow outline-none text-sm text-gray-700 dark:text-gray-300 resize-none bg-gray-50 dark:bg-gray-700"
               placeholder="Describe the task details..."
             />
             {suggestedSubtasks.length > 0 && (
-                <div className="mt-3 bg-purple-50 p-3 rounded-md border border-purple-100">
-                    <p className="text-xs font-bold text-purple-800 mb-2">✨ AI Suggested Subtasks (Will be saved to description)</p>
+                <div className="mt-3 bg-purple-50 dark:bg-purple-900/20 p-3 rounded-md border border-purple-100 dark:border-purple-800">
+                    <p className="text-xs font-bold text-purple-800 dark:text-purple-300 mb-2">✨ AI Suggested Subtasks (Will be saved to description)</p>
                     <ul className="space-y-1">
                         {suggestedSubtasks.map((st, idx) => (
-                            <li key={idx} className="text-xs text-purple-700 flex items-start">
+                            <li key={idx} className="text-xs text-purple-700 dark:text-purple-400 flex items-start">
                                 <span className="mr-1.5">•</span> {st}
                             </li>
                         ))}
@@ -192,7 +192,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center rounded-b-xl">
+        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-750 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center rounded-b-xl">
           {task && onDelete ? (
              <Button 
                 variant="danger" 
@@ -209,7 +209,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
           ) : <div></div>}
           
           <div className="flex space-x-3">
-            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button variant="secondary" onClick={onClose} className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:hover:bg-gray-600">Cancel</Button>
             <Button variant="primary" onClick={handleSave}>
               {task ? 'Save Changes' : 'Create Task'}
             </Button>
