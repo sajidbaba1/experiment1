@@ -1,0 +1,223 @@
+import React, { useState, useEffect } from 'react';
+import { Task, TaskPriority, TaskStatus } from '../types';
+import Button from './Button';
+import { enhanceTaskDescription, suggestSubtasks } from '../services/geminiService';
+
+interface TaskModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (task: Partial<Task>) => void;
+  onDelete?: (id: string) => void;
+  task?: Task;
+}
+
+const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete, task }) => {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
+  const [priority, setPriority] = useState<TaskPriority>(TaskPriority.MEDIUM);
+  const [dueDate, setDueDate] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [suggestedSubtasks, setSuggestedSubtasks] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (task) {
+      setTitle(task.title);
+      setDescription(task.description);
+      setStatus(task.status);
+      setPriority(task.priority);
+      setDueDate(task.dueDate);
+      setSuggestedSubtasks([]);
+    } else {
+      // Reset for new task
+      setTitle('');
+      setDescription('');
+      setStatus(TaskStatus.TODO);
+      setPriority(TaskPriority.MEDIUM);
+      setDueDate(new Date().toISOString().split('T')[0]);
+      setSuggestedSubtasks([]);
+    }
+  }, [task, isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSave = () => {
+    if (!title.trim()) return;
+    onSave({
+      id: task?.id,
+      title,
+      description: suggestedSubtasks.length > 0 ? description + "\n\n**Subtasks:**\n" + suggestedSubtasks.map(s => `- [ ] ${s}`).join('\n') : description,
+      status,
+      priority,
+      dueDate,
+    });
+    onClose();
+  };
+
+  const handleAiEnhance = async () => {
+    if (!title) return;
+    setIsAiLoading(true);
+    try {
+      const enhancedDesc = await enhanceTaskDescription(title, description);
+      setDescription(enhancedDesc);
+      
+      const subtasks = await suggestSubtasks(title, enhancedDesc);
+      setSuggestedSubtasks(subtasks);
+    } catch (e) {
+      console.error("AI enhancement failed", e);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+      <div 
+        className="fixed inset-0 bg-gray-900 bg-opacity-40 transition-opacity backdrop-blur-sm"
+        onClick={onClose}
+      ></div>
+
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl transform transition-all flex flex-col max-h-[90vh] z-10">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900">
+            {task ? 'Edit Task' : 'New Task'}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
+          
+          {/* Title Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Redesign Landing Page"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow outline-none text-gray-900 font-medium placeholder-gray-400"
+              autoFocus
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+             {/* Status */}
+             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as TaskStatus)}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
+              >
+                {Object.values(TaskStatus).map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Priority */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as TaskPriority)}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
+              >
+                {Object.values(TaskPriority).map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Due Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm text-gray-600"
+              />
+            </div>
+          </div>
+
+          {/* Description + AI */}
+          <div className="relative">
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <button 
+                type="button"
+                onClick={handleAiEnhance}
+                disabled={isAiLoading || !title}
+                className="flex items-center text-xs font-semibold text-purple-600 hover:text-purple-700 disabled:opacity-50 transition-colors"
+              >
+                {isAiLoading ? (
+                   <span className="flex items-center">
+                     <svg className="animate-spin -ml-1 mr-1 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                     Thinking...
+                   </span>
+                ) : (
+                  <span className="flex items-center">
+                    <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    AI Enhance
+                  </span>
+                )}
+              </button>
+            </div>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={6}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow outline-none text-sm text-gray-700 resize-none bg-gray-50"
+              placeholder="Describe the task details..."
+            />
+            {suggestedSubtasks.length > 0 && (
+                <div className="mt-3 bg-purple-50 p-3 rounded-md border border-purple-100">
+                    <p className="text-xs font-bold text-purple-800 mb-2">✨ AI Suggested Subtasks (Will be saved to description)</p>
+                    <ul className="space-y-1">
+                        {suggestedSubtasks.map((st, idx) => (
+                            <li key={idx} className="text-xs text-purple-700 flex items-start">
+                                <span className="mr-1.5">•</span> {st}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center rounded-b-xl">
+          {task && onDelete ? (
+             <Button 
+                variant="danger" 
+                size="sm" 
+                onClick={() => {
+                  if(window.confirm('Are you sure you want to delete this task?')) {
+                    onDelete(task.id);
+                    onClose();
+                  }
+                }}
+              >
+                Delete
+              </Button>
+          ) : <div></div>}
+          
+          <div className="flex space-x-3">
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button variant="primary" onClick={handleSave}>
+              {task ? 'Save Changes' : 'Create Task'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default TaskModal;
