@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+import { SignedIn, SignedOut, SignIn, UserButton, useUser } from "@clerk/clerk-react";
 import Layout, { ViewType } from './components/Layout';
 import TaskBoard from './components/TaskBoard';
 import TaskList from './components/TaskList';
@@ -12,77 +12,11 @@ import TrashView from './components/TrashView'; // Feature 3
 import ShortcutsModal from './components/ShortcutsModal'; // Feature 6
 import AutomationModal from './components/AutomationModal';
 import { Task, TaskStatus, TaskPriority, Comment, AutomationRule, ProjectDoc } from './types';
+import { api } from './services/api';
 import { generateSprintTasks, autoAssignTasks } from './services/geminiService';
 
-// Mock Data
-const INITIAL_TASKS: Task[] = [
-  {
-    id: '1',
-    title: 'Design System Audit',
-    description: 'Review the current color palette and typography scale.\n\n- [x] Colors\n- [x] Typography\n- [ ] Spacing',
-    status: TaskStatus.IN_PROGRESS,
-    priority: TaskPriority.HIGH,
-    dueDate: new Date(Date.now() + 86400000 * 2).toISOString(),
-    assignee: 'Alex',
-    tags: ['Design', 'Audit'],
-    comments: [
-      { id: 'c1', text: 'I found some inconsistencies in the mobile view.', author: 'Sam', createdAt: Date.now() - 10000000 }
-    ],
-    createdAt: Date.now() - 86400000 * 5,
-    estimatedTime: 4,
-  },
-  {
-    id: '2',
-    title: 'Implement Auth Flow',
-    description: 'Integrate the new authentication API endpoints.\n\n- [ ] Login\n- [ ] Signup\n- [ ] Forgot Password',
-    status: TaskStatus.TODO,
-    priority: TaskPriority.HIGH,
-    dueDate: new Date(Date.now() + 86400000 * 5).toISOString(),
-    assignee: 'Sam',
-    tags: ['Dev', 'Backend'],
-    comments: [],
-    createdAt: Date.now() - 86400000 * 2,
-    estimatedTime: 8,
-  },
-  {
-    id: '3',
-    title: 'Update Documentation',
-    description: 'Ensure the API docs reflect the latest breaking changes.',
-    status: TaskStatus.DONE,
-    priority: TaskPriority.LOW,
-    dueDate: new Date(Date.now() - 86400000).toISOString(),
-    assignee: 'Taylor',
-    tags: ['Docs'],
-    comments: [],
-    createdAt: Date.now() - 86400000 * 10,
-    estimatedTime: 2,
-  },
-    {
-    id: '4',
-    title: 'Q4 Marketing Plan',
-    description: 'Draft initial outline for Q4 social media campaigns.',
-    status: TaskStatus.REVIEW,
-    priority: TaskPriority.MEDIUM,
-    dueDate: new Date(Date.now() + 86400000 * 10).toISOString(),
-    assignee: 'Jordan',
-    tags: ['Marketing'],
-    comments: [],
-    createdAt: Date.now() - 86400000 * 3,
-    estimatedTime: 5,
-  },
-];
-
-const INITIAL_RULES: AutomationRule[] = [
-  {
-    id: '1',
-    name: 'Auto-Archive Done Tasks',
-    triggerType: 'STATUS_CHANGE',
-    triggerValue: TaskStatus.DONE,
-    actionType: 'SET_PRIORITY',
-    actionValue: TaskPriority.LOW,
-    isActive: true
-  }
-];
+// Initial Rules for Automation (Frontend only for now)
+// Initial Rules removed - loaded from backend
 
 interface ToastMessage {
   message: string;
@@ -90,11 +24,11 @@ interface ToastMessage {
 }
 
 function App() {
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [deletedTasks, setDeletedTasks] = useState<Task[]>([]); // Feature 3
   const [docs, setDocs] = useState<ProjectDoc[]>([]);
-  const [automations, setAutomations] = useState<AutomationRule[]>(INITIAL_RULES);
-  
+  const [automations, setAutomations] = useState<AutomationRule[]>([]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAutomationModalOpen, setIsAutomationModalOpen] = useState(false);
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false); // Feature 6
@@ -102,15 +36,16 @@ function App() {
   const [currentView, setCurrentView] = useState<ViewType>('board');
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState<ToastMessage | null>(null);
-  
+
   // Feature 4: Zen Mode
   const [zenMode, setZenMode] = useState(false);
-  
+
+  // Theme State
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('taskflow_dark_mode');
     return saved ? JSON.parse(saved) : false;
   });
-  
+
   const [colorTheme, setColorTheme] = useState(() => {
     return localStorage.getItem('taskflow_color_theme') || 'blue';
   });
@@ -133,46 +68,55 @@ function App() {
     }
   }, [colorTheme]);
 
+  // Load All Data from API
   useEffect(() => {
-     const savedTasks = localStorage.getItem('taskflow_tasks');
-     if (savedTasks) setTasks(JSON.parse(savedTasks));
-
-     const savedDeleted = localStorage.getItem('taskflow_deleted_tasks');
-     if (savedDeleted) setDeletedTasks(JSON.parse(savedDeleted));
-
-     const savedDocs = localStorage.getItem('taskflow_docs');
-     if (savedDocs) setDocs(JSON.parse(savedDocs));
-
-     const savedRules = localStorage.getItem('taskflow_automations');
-     if (savedRules) setAutomations(JSON.parse(savedRules));
+    loadData();
   }, []);
 
-  useEffect(() => localStorage.setItem('taskflow_tasks', JSON.stringify(tasks)), [tasks]);
-  useEffect(() => localStorage.setItem('taskflow_deleted_tasks', JSON.stringify(deletedTasks)), [deletedTasks]);
-  useEffect(() => localStorage.setItem('taskflow_docs', JSON.stringify(docs)), [docs]);
-  useEffect(() => localStorage.setItem('taskflow_automations', JSON.stringify(automations)), [automations]);
+  const loadData = async () => {
+    try {
+      const [tasksData, trashData, docsData, rulesData] = await Promise.all([
+        api.getAllTasks(),
+        api.getTrash(),
+        api.getAllDocs(),
+        api.getAllRules()
+      ]);
+      setTasks(tasksData);
+      setDeletedTasks(trashData);
+      setDocs(docsData);
+      setAutomations(rulesData);
+    } catch (e) {
+      console.error("Failed to load data", e);
+      showToast('Failed to load data. Is the backend running?', 'error');
+    }
+  };
+
+  const loadTasks = async () => {
+    const data = await api.getAllTasks();
+    setTasks(data);
+  };
 
   // Feature 6: Global Keyboard Listener
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-       if (e.key === '?') {
-         setIsShortcutsModalOpen(true);
-       }
-       if (e.key.toLowerCase() === 'n') {
-         handleCreateTask();
-       }
-       if (e.key === '/') {
-         e.preventDefault();
-         const searchInput = document.querySelector('input[placeholder="Search tasks..."]') as HTMLInputElement;
-         searchInput?.focus();
-       }
-       if (e.key === 'Escape') {
-         setIsModalOpen(false);
-         setIsAutomationModalOpen(false);
-         setIsShortcutsModalOpen(false);
-       }
+      if (e.key === '?') {
+        setIsShortcutsModalOpen(true);
+      }
+      if (e.key.toLowerCase() === 'n') {
+        handleCreateTask();
+      }
+      if (e.key === '/') {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[placeholder="Search tasks..."]') as HTMLInputElement;
+        searchInput?.focus();
+      }
+      if (e.key === 'Escape') {
+        setIsModalOpen(false);
+        setIsAutomationModalOpen(false);
+        setIsShortcutsModalOpen(false);
+      }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
@@ -192,12 +136,12 @@ function App() {
       if (rule.triggerType === 'STATUS_CHANGE' && rule.triggerValue === task.status) {
         triggered = true;
         if (rule.actionType === 'SET_PRIORITY') {
-           updatedTask.priority = rule.actionValue as TaskPriority;
-           showToast(`Automation: Set priority to ${rule.actionValue}`, 'info');
+          updatedTask.priority = rule.actionValue as TaskPriority;
+          showToast(`Automation: Set priority to ${rule.actionValue}`, 'info');
         }
         if (rule.actionType === 'ASSIGN_USER') {
-           updatedTask.assignee = rule.actionValue;
-           showToast(`Automation: Assigned to ${rule.actionValue}`, 'info');
+          updatedTask.assignee = rule.actionValue;
+          showToast(`Automation: Assigned to ${rule.actionValue}`, 'info');
         }
       }
     });
@@ -215,79 +159,125 @@ function App() {
     setIsModalOpen(true);
   };
 
-  const handleSaveTask = (taskData: Partial<Task>) => {
-    if (taskData.id) {
-      setTasks(prev => prev.map(t => t.id === taskData.id ? { ...t, ...taskData } as Task : t));
-      showToast('Task updated successfully');
-    } else {
-      const newTask: Task = {
-        id: Date.now().toString(),
-        createdAt: Date.now(),
-        title: taskData.title || 'Untitled',
-        description: taskData.description || '',
-        status: taskData.status || TaskStatus.TODO,
-        priority: taskData.priority || TaskPriority.MEDIUM,
-        dueDate: taskData.dueDate || new Date().toISOString(),
-        tags: taskData.tags || [],
-        comments: [],
-        assignee: taskData.assignee || 'You', 
-        estimatedTime: taskData.estimatedTime,
-        blockedBy: taskData.blockedBy
-      };
-      setTasks(prev => [...prev, newTask]);
-      showToast('New task created', 'success');
+  const handleSaveTask = async (taskData: Partial<Task>) => {
+    try {
+      if (taskData.id) {
+        // Update existing
+        const updatedTask = await api.updateTask(taskData.id, taskData);
+        setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+        showToast('Task updated successfully');
+      } else {
+        // Create new
+        const newTaskData = {
+          ...taskData,
+          status: taskData.status || TaskStatus.TODO,
+          priority: taskData.priority || TaskPriority.MEDIUM,
+          dueDate: taskData.dueDate || new Date().toISOString(),
+          tags: taskData.tags || [],
+          comments: [],
+          assignee: taskData.assignee || 'You',
+          estimatedTime: taskData.estimatedTime,
+          blockedBy: taskData.blockedBy
+        };
+        const createdTask = await api.createTask(newTaskData);
+        setTasks(prev => [...prev, createdTask]);
+        showToast('New task created', 'success');
+      }
+      setIsModalOpen(false);
+    } catch (e) {
+      console.error("Failed to save task", e);
+      showToast('Failed to save task', 'error');
     }
   };
 
-  // Feature 3: Move to Trash
-  const handleDeleteTask = (id: string) => {
-    const taskToDelete = tasks.find(t => t.id === id);
-    if (taskToDelete) {
-       setDeletedTasks(prev => [taskToDelete, ...prev]);
-       setTasks(prev => prev.filter(t => t.id !== id));
-       showToast('Task moved to recycle bin', 'info');
+  // Feature 3: Move to Trash (Soft Delete via API)
+  const handleDeleteTask = async (id: string) => {
+    if (window.confirm('Move task to recycle bin?')) {
+      try {
+        await api.deleteTask(id); // Soft delete
+        // Refresh lists
+        const [newTasks, newTrash] = await Promise.all([api.getAllTasks(), api.getTrash()]);
+        setTasks(newTasks);
+        setDeletedTasks(newTrash);
+        showToast('Task moved to recycle bin', 'info');
+        setIsModalOpen(false);
+      } catch (e) {
+        console.error("Failed to delete task", e);
+        showToast('Failed to delete task', 'error');
+      }
     }
   };
 
   // Feature 3: Trash Actions
-  const handleRestoreTask = (id: string) => {
-     const task = deletedTasks.find(t => t.id === id);
-     if (task) {
-        setTasks(prev => [...prev, task]);
-        setDeletedTasks(prev => prev.filter(t => t.id !== id));
-        showToast('Task restored');
-     }
-  };
-
-  const handlePermDeleteTask = (id: string) => {
-     if(window.confirm('This action cannot be undone. Delete forever?')) {
-        setDeletedTasks(prev => prev.filter(t => t.id !== id));
-        showToast('Task permanently deleted');
-     }
-  };
-
-  const handleEmptyTrash = () => {
-     if(window.confirm('Empty recycle bin?')) {
-        setDeletedTasks([]);
-        showToast('Recycle bin emptied');
-     }
-  };
-
-  const handleTaskMove = (taskId: string, newStatus: TaskStatus) => {
-    let task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    let updatedTask = { ...task, status: newStatus };
-    const { updatedTask: automatedTask, triggered } = runAutomations(updatedTask);
-
-    setTasks(prev => prev.map(t => t.id === taskId ? automatedTask : t));
-    
-    if (newStatus === TaskStatus.DONE) {
-      showToast('Task completed! 🎉', 'success');
+  const handleRestoreTask = async (id: string) => {
+    try {
+      await api.restoreTask(id);
+      // Refresh lists
+      const [newTasks, newTrash] = await Promise.all([api.getAllTasks(), api.getTrash()]);
+      setTasks(newTasks);
+      setDeletedTasks(newTrash);
+      showToast('Task restored');
+    } catch (e) {
+      console.error("Failed to restore task", e);
+      showToast('Failed to restore task', 'error');
     }
   };
 
-  const handleAddComment = (taskId: string, text: string) => {
+  const handlePermDeleteTask = async (id: string) => {
+    if (window.confirm('This action cannot be undone. Delete forever?')) {
+      try {
+        await api.permanentDeleteTask(id);
+        setDeletedTasks(prev => prev.filter(t => t.id !== id));
+        showToast('Task permanently deleted');
+      } catch (e) {
+        console.error("Failed to delete task permanently", e);
+        showToast('Failed to delete task', 'error');
+      }
+    }
+  };
+
+  const handleEmptyTrash = async () => {
+    if (window.confirm('Empty recycle bin? This cannot be undone.')) {
+      try {
+        // Delete all individually for now (could add bulk delete API)
+        await Promise.all(deletedTasks.map(t => api.permanentDeleteTask(t.id)));
+        setDeletedTasks([]);
+        showToast('Recycle bin emptied');
+      } catch (e) {
+        console.error("Failed to empty trash", e);
+        showToast('Failed to empty trash', 'error');
+      }
+    }
+  };
+
+  const handleTaskMove = async (taskId: string, newStatus: TaskStatus) => {
+    let task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    // 1. Apply status change locally first (Optimistic)
+    let updatedTask = { ...task, status: newStatus };
+
+    // 2. Run Automations
+    const { updatedTask: automatedTask, triggered } = runAutomations(updatedTask);
+
+    // 3. Update State
+    setTasks(prev => prev.map(t => t.id === taskId ? automatedTask : t));
+
+    // 4. Persist to Backend
+    try {
+      await api.updateTask(taskId, automatedTask);
+
+      if (newStatus === TaskStatus.DONE) {
+        showToast('Task completed! 🎉', 'success');
+      }
+    } catch (e) {
+      console.error("Failed to move task", e);
+      showToast('Failed to move task', 'error');
+      loadTasks(); // Revert on error
+    }
+  };
+
+  const handleAddComment = async (taskId: string, text: string) => {
     const newComment: Comment = {
       id: Date.now().toString(),
       text,
@@ -296,97 +286,172 @@ function App() {
       reactions: {}
     };
 
-    const updateTaskWithComment = (task: Task) => ({
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const updatedTask = {
       ...task,
       comments: [...(task.comments || []), newComment]
+    };
+
+    // Optimistic Update
+    setTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t));
+    if (currentTask && currentTask.id === taskId) {
+      setCurrentTask(updatedTask);
+    }
+
+    // Persist
+    try {
+      await api.updateTask(taskId, updatedTask);
+    } catch (e) {
+      console.error("Failed to add comment", e);
+      showToast("Failed to save comment", 'error');
+    }
+  };
+
+  const handleAddReaction = async (taskId: string, commentId: string, emoji: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !task.comments) return;
+
+    const updatedComments = task.comments.map(c => {
+      if (c.id !== commentId) return c;
+
+      const currentReactions = c.reactions || {};
+      const existing = currentReactions[emoji] || { count: 0, userReacted: false, emoji };
+
+      return {
+        ...c,
+        reactions: {
+          ...currentReactions,
+          [emoji]: {
+            ...existing,
+            count: existing.count + 1,
+            userReacted: true
+          }
+        }
+      };
     });
 
-    setTasks(prev => prev.map(t => t.id === taskId ? updateTaskWithComment(t) : t));
+    const updatedTask = { ...task, comments: updatedComments };
+
+    // Optimistic Update
+    setTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t));
     if (currentTask && currentTask.id === taskId) {
-      setCurrentTask(prev => prev ? updateTaskWithComment(prev) : prev);
+      setCurrentTask(updatedTask);
+    }
+
+    // Persist
+    try {
+      await api.updateTask(taskId, updatedTask);
+    } catch (e) {
+      console.error("Failed to add reaction", e);
     }
   };
 
-  const handleAddReaction = (taskId: string, commentId: string, emoji: string) => {
-     setTasks(prev => prev.map(t => {
-        if (t.id !== taskId || !t.comments) return t;
-        const updatedComments = t.comments.map(c => {
-           if (c.id !== commentId) return c;
-           const currentReactions = c.reactions || {};
-           const existing = currentReactions[emoji] || { count: 0, userReacted: false, emoji };
-           return {
-              ...c,
-              reactions: {
-                 ...currentReactions,
-                 [emoji]: { ...existing, count: existing.count + 1, userReacted: true }
-              }
-           };
-        });
-        if (currentTask && currentTask.id === taskId) {
-           setCurrentTask({ ...t, comments: updatedComments });
-        }
-        return { ...t, comments: updatedComments };
-     }));
-  };
-
-  const handleDuplicateTask = (task: Task) => {
-    const newTask: Task = {
-      ...task,
-      id: Date.now().toString(),
-      title: `${task.title} (Copy)`,
-      createdAt: Date.now(),
-      comments: [],
-    };
-    setTasks(prev => [...prev, newTask]);
-    showToast('Task duplicated');
-    setIsModalOpen(false);
-  };
-
-  const handleClearDoneTasks = () => {
-    if (window.confirm('Are you sure you want to move all completed tasks to trash?')) {
-      const doneTasks = tasks.filter(t => t.status === TaskStatus.DONE);
-      setDeletedTasks(prev => [...prev, ...doneTasks]);
-      setTasks(prev => prev.filter(t => t.status !== TaskStatus.DONE));
-      showToast('Completed tasks moved to trash', 'info');
+  const handleDuplicateTask = async (task: Task) => {
+    try {
+      const newTaskData = {
+        ...task,
+        id: undefined, // Let backend assign ID
+        title: `${task.title} (Copy)`,
+        createdAt: Date.now(),
+        comments: [], // Don't copy comments
+      };
+      const createdTask = await api.createTask(newTaskData);
+      setTasks(prev => [...prev, createdTask]);
+      showToast('Task duplicated');
+      setIsModalOpen(false);
+    } catch (e) {
+      console.error("Failed to duplicate task", e);
+      showToast('Failed to duplicate task', 'error');
     }
   };
 
-  const handleSaveDoc = (doc: ProjectDoc) => {
-     if (docs.find(d => d.id === doc.id)) {
-        setDocs(prev => prev.map(d => d.id === doc.id ? doc : d));
+  const handleClearDoneTasks = async () => {
+    if (window.confirm('Are you sure you want to remove all completed tasks?')) {
+      try {
+        const doneTasks = tasks.filter(t => t.status === TaskStatus.DONE);
+        await Promise.all(doneTasks.map(t => api.deleteTask(t.id)));
+        setTasks(prev => prev.filter(t => t.status !== TaskStatus.DONE));
+        showToast('Completed tasks cleared', 'info');
+      } catch (e) {
+        console.error("Failed to clear completed tasks", e);
+        showToast('Failed to clear completed tasks', 'error');
+      }
+    }
+  };
+
+  // --- Docs Handlers (API) ---
+  const handleSaveDoc = async (doc: ProjectDoc) => {
+    try {
+      if (docs.find(d => d.id === doc.id)) {
+        const updated = await api.updateDoc(doc.id, doc);
+        setDocs(prev => prev.map(d => d.id === doc.id ? updated : d));
         showToast('Document saved');
-     } else {
-        setDocs(prev => [...prev, doc]);
+      } else {
+        const created = await api.createDoc(doc);
+        setDocs(prev => [...prev, created]);
         showToast('New document created');
-     }
+      }
+    } catch (e) {
+      console.error("Failed to save doc", e);
+      showToast('Failed to save document', 'error');
+    }
   };
 
-  const handleDeleteDoc = (id: string) => {
-     if(window.confirm('Delete this document?')) {
+  const handleDeleteDoc = async (id: string) => {
+    if (window.confirm('Delete this document?')) {
+      try {
+        await api.deleteDoc(id);
         setDocs(prev => prev.filter(d => d.id !== id));
         showToast('Document deleted');
-     }
+      } catch (e) {
+        console.error("Failed to delete doc", e);
+        showToast('Failed to delete document', 'error');
+      }
+    }
   };
 
-  const handleAddRule = (rule: AutomationRule) => {
-    setAutomations(prev => [...prev, rule]);
-    showToast('Automation rule created');
+  // --- Automation Handlers (API) ---
+  const handleAddRule = async (rule: AutomationRule) => {
+    try {
+      const created = await api.createRule(rule);
+      setAutomations(prev => [...prev, created]);
+      showToast('Automation rule created');
+    } catch (e) {
+      console.error("Failed to create rule", e);
+      showToast('Failed to create rule', 'error');
+    }
   };
 
-  const handleDeleteRule = (id: string) => {
-    setAutomations(prev => prev.filter(r => r.id !== id));
+  const handleDeleteRule = async (id: string) => {
+    try {
+      await api.deleteRule(id);
+      setAutomations(prev => prev.filter(r => r.id !== id));
+    } catch (e) {
+      console.error("Failed to delete rule", e);
+      showToast('Failed to delete rule', 'error');
+    }
   };
 
-  const handleToggleRule = (id: string) => {
-    setAutomations(prev => prev.map(r => r.id === id ? { ...r, isActive: !r.isActive } : r));
+  const handleToggleRule = async (id: string) => {
+    const rule = automations.find(r => r.id === id);
+    if (!rule) return;
+    try {
+      const updated = await api.updateRule(id, { ...rule, isActive: !rule.isActive });
+      setAutomations(prev => prev.map(r => r.id === id ? updated : r));
+    } catch (e) {
+      console.error("Failed to toggle rule", e);
+      showToast('Failed to toggle rule', 'error');
+    }
   };
 
   const handleExportCSV = () => {
     const headers = ['ID', 'Title', 'Description', 'Status', 'Priority', 'Due Date', 'Assignee', 'Estimated Time', 'Created At'];
     const rows = tasks.map(t => [
       t.id,
-      `"${t.title.replace(/"/g, '""')}"`,
-      `"${t.description.replace(/"/g, '""')}"`,
+      `"${(t.title || '').replace(/"/g, '""')}"`,
+      `"${(t.description || '').replace(/"/g, '""')}"`,
       t.status,
       t.priority,
       t.dueDate,
@@ -394,7 +459,10 @@ function App() {
       t.estimatedTime || '',
       new Date(t.createdAt).toISOString()
     ]);
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -405,39 +473,51 @@ function App() {
     showToast('Tasks exported to CSV');
   };
 
-  const handleQuickAddTask = (title: string, status: TaskStatus) => {
-    const newTask: Task = {
-      id: Date.now().toString(),
-      title,
-      description: '',
-      status,
-      priority: TaskPriority.MEDIUM,
-      dueDate: '',
-      tags: [],
-      comments: [],
-      createdAt: Date.now(),
-      assignee: 'You',
-    };
-    setTasks(prev => [...prev, newTask]);
-    showToast('Task added quickly', 'success');
+  const handleQuickAddTask = async (title: string, status: TaskStatus) => {
+    try {
+      const newTaskData = {
+        title,
+        status,
+        priority: TaskPriority.MEDIUM,
+        dueDate: new Date().toISOString(),
+        tags: [],
+        comments: [],
+        assignee: 'You',
+      };
+      const createdTask = await api.createTask(newTaskData);
+      setTasks(prev => [...prev, createdTask]);
+      showToast('Task added quickly', 'success');
+    } catch (e) {
+      console.error("Failed to quick add task", e);
+      showToast('Failed to quick add task', 'error');
+    }
   };
 
   const handleGenerateSprint = async () => {
     const goal = prompt("What is the goal of this sprint? (e.g., 'Build the user dashboard')");
     if (!goal) return;
     showToast("AI is generating your sprint plan...", 'info');
+
     const users = Array.from(new Set(tasks.map(t => t.assignee).filter(Boolean))) as string[];
     const generatedTasks = await generateSprintTasks(goal, users.length ? users : ['Alex', 'Sam', 'Taylor']);
     if (generatedTasks.length > 0) {
-      const newTasks = generatedTasks.map((t, index) => ({
-        ...t,
-        id: (Date.now() + index).toString(),
-        createdAt: Date.now(),
-        comments: [],
-        dueDate: new Date().toISOString()
-      } as Task));
-      setTasks(prev => [...prev, ...newTasks]);
-      showToast(`Generated ${newTasks.length} tasks for your sprint!`, 'success');
+      try {
+        const createdTasks = await Promise.all(generatedTasks.map(t => api.createTask({
+          ...t,
+          status: TaskStatus.TODO,
+          priority: t.priority || TaskPriority.MEDIUM,
+          dueDate: new Date().toISOString(),
+          tags: t.tags || [],
+          comments: [],
+          assignee: t.assignee || 'You'
+        })));
+
+        setTasks(prev => [...prev, ...createdTasks]);
+        showToast(`Generated ${createdTasks.length} tasks for your sprint!`, 'success');
+      } catch (e) {
+        console.error("Failed to save generated sprint tasks", e);
+        showToast("Failed to save generated tasks.", 'error');
+      }
     } else {
       showToast("Could not generate sprint. Try again.", 'error');
     }
@@ -452,131 +532,155 @@ function App() {
     showToast("AI is assigning tasks...", 'info');
     const users = Array.from(new Set(tasks.map(t => t.assignee).filter(a => a && a !== 'Unassigned' && a !== 'You'))) as string[];
     const availableUsers = users.length > 0 ? users : ['Alex', 'Sam', 'Taylor', 'Jordan'];
+
     const assignments = await autoAssignTasks(unassigned, availableUsers);
+
     let count = 0;
-    setTasks(prev => prev.map(t => {
-      if (assignments[t.id]) {
-        count++;
-        return { ...t, assignee: assignments[t.id] };
+    try {
+      const updates = [];
+      for (const taskId in assignments) {
+        const assignee = assignments[taskId];
+        const task = tasks.find(t => t.id === taskId);
+        if (task) {
+          updates.push(api.updateTask(taskId, { ...task, assignee }));
+          count++;
+        }
       }
-      return t;
-    }));
-    if (count > 0) {
-      showToast(`Auto-assigned ${count} tasks.`, 'success');
-    } else {
-      showToast("Could not assign tasks.", 'error');
+      await Promise.all(updates);
+      loadTasks();
+
+      if (count > 0) {
+        showToast(`Auto-assigned ${count} tasks.`, 'success');
+      } else {
+        showToast("Could not assign tasks.", 'error');
+      }
+    } catch (e) {
+      console.error("Failed to auto-assign tasks", e);
+      showToast("Failed to update task assignments.", 'error');
     }
   };
 
   return (
-    <Layout 
-      onNewTask={handleCreateTask}
-      darkMode={darkMode}
-      toggleDarkMode={() => setDarkMode(!darkMode)}
-      colorTheme={colorTheme}
-      setColorTheme={setColorTheme}
-      currentView={currentView}
-      onViewChange={setCurrentView}
-      searchQuery={searchQuery}
-      onSearchChange={setSearchQuery}
-      onExportCSV={handleExportCSV}
-      onGenerateSprint={handleGenerateSprint}
-      onOpenAutomations={() => setIsAutomationModalOpen(true)}
-      onOpenShortcuts={() => setIsShortcutsModalOpen(true)}
-      tasks={tasks}
-      zenMode={zenMode}
-      toggleZenMode={() => setZenMode(!zenMode)}
-    >
-      {currentView === 'board' && (
-        <TaskBoard 
-          tasks={tasks} 
-          onTaskClick={handleEditTask} 
-          onTaskMove={handleTaskMove}
+    <>
+      <SignedOut>
+        <div className="flex items-center justify-center h-screen bg-gray-100 dark:bg-gray-900">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl">
+            <h1 className="text-3xl font-bold mb-6 text-center text-gray-900 dark:text-white">TaskFlow</h1>
+            <SignIn />
+          </div>
+        </div>
+      </SignedOut>
+      <SignedIn>
+        <Layout
+          onNewTask={handleCreateTask}
+          darkMode={darkMode}
+          toggleDarkMode={() => setDarkMode(!darkMode)}
+          colorTheme={colorTheme}
+          setColorTheme={setColorTheme}
+          currentView={currentView}
+          onViewChange={setCurrentView}
           searchQuery={searchQuery}
-          onQuickAddTask={handleQuickAddTask}
-          onClearDoneTasks={handleClearDoneTasks}
-          onAutoAssign={handleAutoAssign}
-        />
-      )}
-      
-      {currentView === 'list' && (
-        <TaskList 
+          onSearchChange={setSearchQuery}
+          onExportCSV={handleExportCSV}
+          onGenerateSprint={handleGenerateSprint}
+          onOpenAutomations={() => setIsAutomationModalOpen(true)}
+          onOpenShortcuts={() => setIsShortcutsModalOpen(true)}
           tasks={tasks}
-          onTaskClick={handleEditTask}
-          searchQuery={searchQuery}
-        />
-      )}
+          zenMode={zenMode}
+          toggleZenMode={() => setZenMode(!zenMode)}
+        >
+          {currentView === 'board' && (
+            <TaskBoard
+              tasks={tasks}
+              onTaskClick={handleEditTask}
+              onTaskMove={handleTaskMove}
+              searchQuery={searchQuery}
+              onQuickAddTask={handleQuickAddTask}
+              onClearDoneTasks={handleClearDoneTasks}
+              onAutoAssign={handleAutoAssign}
+            />
+          )}
 
-      {currentView === 'my-tasks' && (
-        <TaskList 
-          tasks={tasks.filter(t => t.assignee === 'You' || t.assignee === 'Unassigned')}
-          onTaskClick={handleEditTask}
-          searchQuery={searchQuery}
-        />
-      )}
+          {currentView === 'list' && (
+            <TaskList
+              tasks={tasks}
+              onTaskClick={handleEditTask}
+              searchQuery={searchQuery}
+            />
+          )}
 
-      {currentView === 'timeline' && (
-        <TimelineView 
-          tasks={tasks}
-          onTaskClick={handleEditTask}
-        />
-      )}
+          {currentView === 'my-tasks' && (
+            <TaskList
+              tasks={tasks.filter(t => t.assignee === 'You' || t.assignee === 'Unassigned')}
+              onTaskClick={handleEditTask}
+              searchQuery={searchQuery}
+            />
+          )}
 
-      {currentView === 'docs' && (
-        <DocsView 
-          docs={docs}
-          onSaveDoc={handleSaveDoc}
-          onDeleteDoc={handleDeleteDoc}
-        />
-      )}
+          {currentView === 'timeline' && (
+            <TimelineView
+              tasks={tasks}
+              onTaskClick={handleEditTask}
+            />
+          )}
 
-      {currentView === 'reports' && (
-        <Reports tasks={tasks} />
-      )}
+          {currentView === 'docs' && (
+            <DocsView
+              docs={docs}
+              onSaveDoc={handleSaveDoc}
+              onDeleteDoc={handleDeleteDoc}
+            />
+          )}
 
-      {currentView === 'trash' && (
-         <TrashView 
-           deletedTasks={deletedTasks}
-           onRestore={handleRestoreTask}
-           onPermDelete={handlePermDeleteTask}
-           onEmptyTrash={handleEmptyTrash}
-         />
-      )}
-      
-      <TaskModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveTask}
-        onDelete={handleDeleteTask}
-        onDuplicate={handleDuplicateTask}
-        onAddComment={handleAddComment}
-        onAddReaction={handleAddReaction}
-        task={currentTask}
-        allTasks={tasks}
-      />
+          {currentView === 'reports' && (
+            <Reports tasks={tasks} />
+          )}
 
-      <AutomationModal
-        isOpen={isAutomationModalOpen}
-        onClose={() => setIsAutomationModalOpen(false)}
-        rules={automations}
-        onAddRule={handleAddRule}
-        onDeleteRule={handleDeleteRule}
-        onToggleRule={handleToggleRule}
-      />
+          {currentView === 'trash' && (
+            <TrashView
+              deletedTasks={deletedTasks}
+              onRestore={handleRestoreTask}
+              onPermDelete={handlePermDeleteTask}
+              onEmptyTrash={handleEmptyTrash}
+            />
+          )}
 
-      <ShortcutsModal 
-         isOpen={isShortcutsModalOpen}
-         onClose={() => setIsShortcutsModalOpen(false)}
-      />
+          <TaskModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onSave={handleSaveTask}
+            onDelete={handleDeleteTask}
+            onDuplicate={handleDuplicateTask}
+            onAddComment={handleAddComment}
+            onAddReaction={handleAddReaction}
+            task={currentTask}
+            allTasks={tasks}
+          />
 
-      {toast && (
-        <Toast 
-          message={toast.message} 
-          type={toast.type} 
-          onClose={() => setToast(null)} 
-        />
-      )}
-    </Layout>
+          <AutomationModal
+            isOpen={isAutomationModalOpen}
+            onClose={() => setIsAutomationModalOpen(false)}
+            rules={automations}
+            onAddRule={handleAddRule}
+            onDeleteRule={handleDeleteRule}
+            onToggleRule={handleToggleRule}
+          />
+
+          <ShortcutsModal
+            isOpen={isShortcutsModalOpen}
+            onClose={() => setIsShortcutsModalOpen(false)}
+          />
+
+          {toast && (
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => setToast(null)}
+            />
+          )}
+        </Layout>
+      </SignedIn>
+    </>
   );
 }
 

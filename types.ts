@@ -37,7 +37,7 @@ export interface Task {
   tags: string[];
   comments?: Comment[];
   createdAt: number;
-  estimatedTime?: number; 
+  estimatedTime?: number;
   blockedBy?: string[]; // IDs of tasks that block this one
 }
 
@@ -81,4 +81,10 @@ export interface ProjectDoc {
   title: string;
   content: string; // Markdown
   updatedAt: number;
+}
+
+// Sticky Note Type
+export interface StickyNote {
+  id?: number;
+  content: string;
 }

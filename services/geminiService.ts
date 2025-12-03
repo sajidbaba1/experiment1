@@ -1,7 +1,7 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { Task, TaskPriority, TaskStatus, Comment } from "../types";
 
-const apiKey = process.env.API_KEY || '';
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
 
 // Helper to check if API key is present
@@ -48,11 +48,11 @@ export const suggestSubtasks = async (title: string, description: string): Promi
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: "OBJECT",
           properties: {
             subtasks: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
+              type: "ARRAY",
+              items: { type: "STRING" }
             }
           }
         }
@@ -93,17 +93,17 @@ export const generateSprintTasks = async (goal: string, existingUsers: string[])
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.ARRAY,
+          type: "ARRAY",
           items: {
-            type: Type.OBJECT,
+            type: "OBJECT",
             properties: {
-              title: { type: Type.STRING },
-              description: { type: Type.STRING },
-              status: { type: Type.STRING },
-              priority: { type: Type.STRING },
-              assignee: { type: Type.STRING },
-              estimatedTime: { type: Type.NUMBER },
-              tags: { type: Type.ARRAY, items: { type: Type.STRING } }
+              title: { type: "STRING" },
+              description: { type: "STRING" },
+              status: { type: "STRING" },
+              priority: { type: "STRING" },
+              assignee: { type: "STRING" },
+              estimatedTime: { type: "NUMBER" },
+              tags: { type: "ARRAY", items: { type: "STRING" } }
             }
           }
         }
@@ -125,7 +125,7 @@ export const summarizeComments = async (comments: Comment[]): Promise<string> =>
   try {
     const commentsText = comments.map(c => `${c.author}: ${c.text}`).join('\n');
     const prompt = `Summarize the following discussion thread into 2-3 key sentences, highlighting any decisions made:\n\n${commentsText}`;
-    
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
@@ -152,17 +152,26 @@ export const generateProjectReport = async (tasks: Task[]): Promise<string> => {
     }));
 
     const prompt = `
-      You are a Project Manager Assistant. Analyze this JSON task list:
-      ${JSON.stringify(simplifiedTasks)}
+      You are an elite Project Manager. Analyze the following task list and generate a high-quality "Daily Executive Briefing" in HTML format.
 
-      Write a "Daily Executive Briefing" in Markdown format.
-      Include:
-      1. A one-sentence health check of the project.
-      2. Key accomplishments (Done tasks).
-      3. Critical blockers or high-priority items still in progress.
-      4. A specific shoutout to a team member carrying a heavy load.
-      
-      Keep it professional but encouraging.
+      Task Data: ${JSON.stringify(simplifiedTasks)}
+
+      **Requirements:**
+      1. **Executive Summary**: A single, powerful sentence summarizing project velocity and health.
+      2. **Completed Work**: List completed tasks.
+      3. **Priority Focus**: Create a table for high-priority/in-progress tasks with columns: Task, Assignee, Priority, Due Date.
+      4. **Risks**: Briefly mention any overdue items or high-priority blockers.
+      5. **Tone**: Professional, concise, data-driven.
+
+      **Formatting:**
+      - Return **ONLY** raw HTML (no \`\`\`html code blocks).
+      - Use Tailwind CSS classes for styling.
+      - Use \`class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden"\` for containers.
+      - Use \`class="min-w-full divide-y divide-gray-200 dark:divide-gray-700"\` for tables.
+      - Use \`class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"\` for table headers.
+      - Use \`class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"\` for table cells.
+      - Use badges for status/priority (e.g., \`bg-red-100 text-red-800\`).
+      - Make it look beautiful and professional.
     `;
 
     const response = await ai.models.generateContent({
@@ -182,8 +191,8 @@ export const getChatResponse = async (message: string, tasks: Task[], history: a
   if (!isGeminiConfigured()) return "I'm offline right now. Please check API Key.";
 
   try {
-     // Create a minimal context of the project
-     const projectContext = tasks.map(t => 
+    // Create a minimal context of the project
+    const projectContext = tasks.map(t =>
       `[${t.status}] ${t.title} (Assigned: ${t.assignee || 'None'}, Priority: ${t.priority})`
     ).join('\n');
 
@@ -201,7 +210,7 @@ export const getChatResponse = async (message: string, tasks: Task[], history: a
 
     // Convert history to Gemini format if needed, for now we just use single turn with context injection for simplicity in this demo
     // or use chat session. Let's use generateContent for single turn stateless simplicity with context.
-    
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `Context:\n${systemInstruction}\n\nUser Question: ${message}`,
@@ -237,8 +246,8 @@ export const autoAssignTasks = async (unassignedTasks: Task[], users: string[]):
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
-          additionalProperties: { type: Type.STRING }
+          type: "OBJECT",
+          additionalProperties: { type: "STRING" }
         }
       }
     });
