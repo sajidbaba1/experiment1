@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import TaskBoard from './components/TaskBoard';
 import TaskModal from './components/TaskModal';
-import { Task, TaskStatus, TaskPriority } from './types';
+import { Task, TaskStatus, TaskPriority, Comment } from './types';
 
 // Mock Data
 const INITIAL_TASKS: Task[] = [
@@ -15,6 +15,9 @@ const INITIAL_TASKS: Task[] = [
     dueDate: '2023-11-15',
     assignee: 'Alex',
     tags: ['Design'],
+    comments: [
+      { id: 'c1', text: 'I found some inconsistencies in the mobile view.', author: 'Sam', createdAt: Date.now() - 10000000 }
+    ],
     createdAt: Date.now(),
   },
   {
@@ -26,6 +29,7 @@ const INITIAL_TASKS: Task[] = [
     dueDate: '2023-11-20',
     assignee: 'Sam',
     tags: ['Dev'],
+    comments: [],
     createdAt: Date.now(),
   },
   {
@@ -37,6 +41,7 @@ const INITIAL_TASKS: Task[] = [
     dueDate: '2023-11-01',
     assignee: 'Taylor',
     tags: ['Docs'],
+    comments: [],
     createdAt: Date.now(),
   },
     {
@@ -48,6 +53,7 @@ const INITIAL_TASKS: Task[] = [
     dueDate: '2023-11-10',
     assignee: 'Jordan',
     tags: ['Marketing'],
+    comments: [],
     createdAt: Date.now(),
   },
 ];
@@ -131,6 +137,7 @@ function App() {
         priority: taskData.priority || TaskPriority.MEDIUM,
         dueDate: taskData.dueDate || new Date().toISOString(),
         tags: [],
+        comments: [],
         assignee: 'You', // Mock assignee
       };
       setTasks(prev => [...prev, newTask]);
@@ -141,6 +148,32 @@ function App() {
     setTasks(prev => prev.filter(t => t.id !== id));
   };
 
+  const handleTaskMove = (taskId: string, newStatus: TaskStatus) => {
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+  };
+
+  const handleAddComment = (taskId: string, text: string) => {
+    const newComment: Comment = {
+      id: Date.now().toString(),
+      text,
+      author: 'You',
+      createdAt: Date.now()
+    };
+
+    const updateTaskWithComment = (task: Task) => ({
+      ...task,
+      comments: [...(task.comments || []), newComment]
+    });
+
+    // Update global state
+    setTasks(prev => prev.map(t => t.id === taskId ? updateTaskWithComment(t) : t));
+
+    // Update local modal state if currently open
+    if (currentTask && currentTask.id === taskId) {
+      setCurrentTask(prev => prev ? updateTaskWithComment(prev) : prev);
+    }
+  };
+
   return (
     <Layout 
       onNewTask={handleCreateTask}
@@ -149,13 +182,18 @@ function App() {
       colorTheme={colorTheme}
       setColorTheme={setColorTheme}
     >
-      <TaskBoard tasks={tasks} onTaskClick={handleEditTask} />
+      <TaskBoard 
+        tasks={tasks} 
+        onTaskClick={handleEditTask} 
+        onTaskMove={handleTaskMove}
+      />
       
       <TaskModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
+        onAddComment={handleAddComment}
         task={currentTask}
       />
     </Layout>

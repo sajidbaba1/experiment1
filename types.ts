@@ -11,6 +11,13 @@ export enum TaskPriority {
   HIGH = 'High'
 }
 
+export interface Comment {
+  id: string;
+  text: string;
+  author: string;
+  createdAt: number;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -20,6 +27,7 @@ export interface Task {
   dueDate: string;
   assignee?: string;
   tags: string[];
+  comments?: Comment[];
   createdAt: number;
 }
 

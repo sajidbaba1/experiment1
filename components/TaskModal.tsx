@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Task, TaskPriority, TaskStatus } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { Task, TaskPriority, TaskStatus, Comment } from '../types';
 import Button from './Button';
 import { enhanceTaskDescription, suggestSubtasks } from '../services/geminiService';
 
@@ -8,10 +8,11 @@ interface TaskModalProps {
   onClose: () => void;
   onSave: (task: Partial<Task>) => void;
   onDelete?: (id: string) => void;
+  onAddComment?: (taskId: string, text: string) => void;
   task?: Task;
 }
 
-const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete, task }) => {
+const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete, onAddComment, task }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
@@ -19,6 +20,10 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
   const [dueDate, setDueDate] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [suggestedSubtasks, setSuggestedSubtasks] = useState<string[]>([]);
+  
+  // Comment State
+  const [newComment, setNewComment] = useState('');
+  const commentsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (task) {
@@ -37,7 +42,17 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       setDueDate(new Date().toISOString().split('T')[0]);
       setSuggestedSubtasks([]);
     }
+    setNewComment('');
   }, [task, isOpen]);
+
+  // Scroll to bottom of comments when task changes or new comment added
+  useEffect(() => {
+    if (isOpen && task) {
+       setTimeout(() => {
+         commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+       }, 100);
+    }
+  }, [task?.comments, isOpen]);
 
   if (!isOpen) return null;
 
@@ -67,6 +82,20 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       console.error("AI enhancement failed", e);
     } finally {
       setIsAiLoading(false);
+    }
+  };
+
+  const handlePostComment = () => {
+    if (newComment.trim() && task && onAddComment) {
+      onAddComment(task.id, newComment);
+      setNewComment('');
+    }
+  };
+
+  const handleKeyDownComment = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handlePostComment();
     }
   };
 
@@ -172,7 +201,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={6}
+              rows={4}
               className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow outline-none text-sm text-gray-700 dark:text-gray-300 resize-none bg-gray-50 dark:bg-gray-700"
               placeholder="Describe the task details..."
             />
@@ -189,6 +218,54 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
                 </div>
             )}
           </div>
+
+          {/* Comments Section - Only show for existing tasks */}
+          {task && (
+            <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Activity & Comments</h3>
+              
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 sm:p-4 mb-3 max-h-48 overflow-y-auto custom-scrollbar">
+                {!task.comments || task.comments.length === 0 ? (
+                  <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-2">No comments yet. Start the conversation!</p>
+                ) : (
+                  <div className="space-y-3">
+                    {task.comments.map((comment: Comment) => (
+                      <div key={comment.id} className="flex space-x-2">
+                        <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center text-[10px] font-bold text-primary-600 dark:text-primary-400 shrink-0 mt-0.5">
+                          {comment.author.substring(0,2).toUpperCase()}
+                        </div>
+                        <div className="flex-1">
+                           <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-gray-900 dark:text-gray-200">{comment.author}</span>
+                              <span className="text-[10px] text-gray-400">
+                                {new Date(comment.createdAt).toLocaleDateString()} {new Date(comment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              </span>
+                           </div>
+                           <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5">{comment.text}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={commentsEndRef} />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex space-x-2">
+                 <input 
+                   type="text" 
+                   value={newComment}
+                   onChange={(e) => setNewComment(e.target.value)}
+                   onKeyDown={handleKeyDownComment}
+                   placeholder="Write a comment..."
+                   className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none dark:bg-gray-700 dark:text-white"
+                 />
+                 <Button size="sm" onClick={handlePostComment} disabled={!newComment.trim()}>
+                   Post
+                 </Button>
+              </div>
+            </div>
+          )}
+
         </div>
 
         {/* Footer */}
