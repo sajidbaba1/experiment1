@@ -71,26 +71,26 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-6">
       <div 
         className="fixed inset-0 bg-gray-900 bg-opacity-40 dark:bg-opacity-80 transition-opacity backdrop-blur-sm"
         onClick={onClose}
       ></div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl transform transition-all flex flex-col max-h-[90vh] z-10 border border-gray-100 dark:border-gray-700">
+      <div className="bg-white dark:bg-gray-800 sm:rounded-xl shadow-2xl w-full h-full sm:h-auto sm:max-w-2xl transform transition-all flex flex-col sm:max-h-[90vh] z-10 border border-gray-100 dark:border-gray-700">
         
         {/* Header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+        <div className="flex justify-between items-center px-4 sm:px-6 py-4 border-b border-gray-100 dark:border-gray-700 shrink-0">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
             {task ? 'Edit Task' : 'New Task'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+          <button onClick={onClose} className="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
+        <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar space-y-6 flex-1">
           
           {/* Title Input */}
           <div>
@@ -192,7 +192,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-750 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center rounded-b-xl">
+        <div className="px-4 sm:px-6 py-4 bg-gray-50 dark:bg-gray-750 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center sm:rounded-b-xl shrink-0 safe-pb-4">
           {task && onDelete ? (
              <Button 
                 variant="danger" 

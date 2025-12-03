@@ -18,6 +18,7 @@ const Layout: React.FC<LayoutProps> = ({
   setColorTheme
 }) => {
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const themeMenuRef = useRef<HTMLDivElement>(null);
 
   // Close theme menu when clicking outside
@@ -39,10 +40,63 @@ const Layout: React.FC<LayoutProps> = ({
     { id: 'pink', name: 'Berry', color: '#ec4899' },
   ];
 
+  const NavLinks = () => (
+    <>
+      <a href="#" className="flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400 group relative transition-colors">
+         <svg className="w-5 h-5 mr-3 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+         Board View
+         <span className="absolute right-4 w-2 h-2 rounded-full bg-primary-600 dark:bg-primary-400"></span>
+      </a>
+      <a href="#" className="flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white group transition-colors">
+         <svg className="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+         List View
+      </a>
+      <a href="#" className="flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white group transition-colors">
+         <svg className="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+         Reports
+      </a>
+    </>
+  );
+
   return (
     <div className="flex h-screen w-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans overflow-hidden transition-colors duration-300">
       
-      {/* Sidebar */}
+      {/* Mobile Sidebar Backdrop */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        ></div>
+      )}
+
+      {/* Mobile Sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out md:hidden ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+         <div className="flex flex-col h-full">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+               <div className="flex items-center space-x-2 text-primary-600 dark:text-primary-500">
+                  <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-500/30">
+                      <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                  </div>
+                  <span className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">TaskFlow</span>
+               </div>
+               <button onClick={() => setIsMobileMenuOpen(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+               </button>
+            </div>
+            <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+               <NavLinks />
+            </nav>
+            <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+               <div className="bg-gradient-to-r from-primary-600 to-indigo-600 rounded-xl p-4 text-white shadow-lg">
+                  <h4 className="font-bold text-sm mb-1">Upgrade to Pro</h4>
+                  <p className="text-xs text-primary-100 mb-3">Get unlimited tasks and AI insights.</p>
+                  <button className="w-full py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-xs font-bold rounded shadow transition-colors">Upgrade Now</button>
+               </div>
+            </div>
+         </div>
+      </div>
+
+      {/* Desktop Sidebar */}
       <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 hidden md:flex flex-col transition-colors duration-300">
         <div className="p-6 border-b border-gray-100 dark:border-gray-700">
           <div className="flex items-center space-x-2 text-primary-600 dark:text-primary-500">
@@ -54,19 +108,7 @@ const Layout: React.FC<LayoutProps> = ({
         </div>
 
         <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
-          <a href="#" className="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400 group relative transition-colors">
-             <svg className="w-5 h-5 mr-3 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-             Board View
-             <span className="absolute right-4 w-2 h-2 rounded-full bg-primary-600 dark:bg-primary-400"></span>
-          </a>
-          <a href="#" className="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white group transition-colors">
-             <svg className="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-             List View
-          </a>
-          <a href="#" className="flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white group transition-colors">
-             <svg className="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-             Reports
-          </a>
+           <NavLinks />
         </nav>
 
         <div className="p-4 border-t border-gray-100 dark:border-gray-700">
@@ -79,27 +121,38 @@ const Layout: React.FC<LayoutProps> = ({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+      <main className="flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900 transition-colors duration-300 relative">
         
         {/* Header */}
-        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-16 px-6 flex items-center justify-between shrink-0 z-20 transition-colors duration-300">
-          <div className="flex items-center md:hidden">
-            <span className="font-bold text-xl text-gray-900 dark:text-white">TaskFlow</span>
+        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 h-16 px-4 sm:px-6 flex items-center justify-between shrink-0 z-20 transition-colors duration-300">
+          
+          <div className="flex items-center gap-3">
+             {/* Mobile Menu Button */}
+             <button 
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="md:hidden p-2 -ml-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
+             >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" /></svg>
+             </button>
+
+             {/* Mobile Brand (visible only when menu button is there) */}
+             <div className="md:hidden font-bold text-lg text-gray-900 dark:text-white">TaskFlow</div>
+
+             {/* Breadcrumbs (Hidden on Mobile) */}
+             <div className="hidden md:flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
+               <span className="hover:text-gray-900 dark:hover:text-white cursor-pointer">Workspace</span>
+               <svg className="w-4 h-4 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+               <span className="text-gray-900 dark:text-white">Engineering</span>
+             </div>
           </div>
 
-          <div className="hidden md:flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
-            <span className="hover:text-gray-900 dark:hover:text-white cursor-pointer">Workspace</span>
-            <svg className="w-4 h-4 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            <span className="text-gray-900 dark:text-white">Engineering</span>
-          </div>
-
-          <div className="flex items-center space-x-4">
-             {/* Search */}
+          <div className="flex items-center space-x-2 sm:space-x-4">
+             {/* Search - Collapsed on Mobile could be implemented, for now just hidden on very small screens */}
              <div className="hidden sm:block relative">
                <input 
                  type="text" 
-                 placeholder="Search tasks..." 
-                 className="w-64 pl-9 pr-4 py-1.5 bg-gray-100 dark:bg-gray-700 border-transparent focus:bg-white dark:focus:bg-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-transparent rounded-lg text-sm transition-all text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                 placeholder="Search..." 
+                 className="w-40 lg:w-64 pl-9 pr-4 py-1.5 bg-gray-100 dark:bg-gray-700 border-transparent focus:bg-white dark:focus:bg-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-transparent rounded-lg text-sm transition-all text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                />
                <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 absolute left-3 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
              </div>
@@ -110,7 +163,7 @@ const Layout: React.FC<LayoutProps> = ({
              <div className="relative" ref={themeMenuRef}>
                <button 
                  onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
-                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
                  title="Change Theme"
                >
                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -120,8 +173,6 @@ const Layout: React.FC<LayoutProps> = ({
 
                {isThemeMenuOpen && (
                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-4 z-50 animate-fade-in-down">
-                    
-                    {/* Dark Mode Toggle */}
                     <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Dark Mode</span>
                       <button 
@@ -138,7 +189,6 @@ const Layout: React.FC<LayoutProps> = ({
                       </button>
                     </div>
 
-                    {/* Accent Color Picker */}
                     <div>
                       <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 block">Accent Color</span>
                       <div className="grid grid-cols-5 gap-2">
@@ -161,22 +211,23 @@ const Layout: React.FC<LayoutProps> = ({
                )}
              </div>
 
+             {/* New Task Button - Text hidden on small mobile */}
              <button 
                 onClick={onNewTask}
-                className="bg-gray-900 dark:bg-primary-600 hover:bg-gray-800 dark:hover:bg-primary-700 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-sm flex items-center transition-colors"
+                className="bg-gray-900 dark:bg-primary-600 hover:bg-gray-800 dark:hover:bg-primary-700 text-white text-sm font-medium py-2 px-3 sm:px-4 rounded-lg shadow-sm flex items-center transition-colors"
              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                New Task
+                <svg className="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                <span className="hidden sm:inline">New Task</span>
              </button>
              
-             <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 flex items-center justify-center cursor-pointer">
+             <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 flex items-center justify-center cursor-pointer shrink-0">
                 <span className="text-xs font-bold text-gray-600 dark:text-gray-300">JD</span>
              </div>
           </div>
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-x-hidden overflow-y-auto">
+        <div className="flex-1 overflow-x-hidden overflow-y-auto relative z-0">
            {children}
         </div>
       </main>
