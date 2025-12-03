@@ -32,7 +32,6 @@ const Reports: React.FC<ReportsProps> = ({ tasks }) => {
   const maxPriorityValue = Math.max(...priorityCounts.map(p => p.value), 1);
 
   // 3. Activity Trend (Line - Mocked timeline based on createdAt)
-  // Group tasks by last 7 days creation
   const last7Days = Array.from({length: 7}, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
@@ -40,16 +39,62 @@ const Reports: React.FC<ReportsProps> = ({ tasks }) => {
   });
   
   const trendData = last7Days.map(date => {
-    // Simply count tasks created on or before this day to simulate cumulative growth or just daily activity
-    // For "Activity", let's just use random + real data mix for visual
     const count = tasks.filter(t => {
        const tDate = new Date(t.createdAt).toISOString().split('T')[0];
        return tDate === date;
     }).length;
-    // Add some random noise for the demo if count is 0 to make the graph look "alive"
-    return count + Math.floor(Math.random() * 2); 
+    return count + (count === 0 && Math.random() > 0.8 ? 1 : 0); // Slight randomization for empty demo states
   });
-  const maxTrend = Math.max(...trendData, 5);
+  const maxTrend = Math.max(...trendData, 4);
+
+  // 4. Heatmap Data Generation
+  const generateHeatmapData = () => {
+    const today = new Date();
+    const mapData = [];
+    const weeks = 52;
+    const days = 7;
+    
+    // Calculate start date (52 weeks ago, aligned to Sunday)
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - (weeks * 7));
+    const dayOfWeek = startDate.getDay();
+    startDate.setDate(startDate.getDate() - dayOfWeek);
+
+    // Group tasks by date
+    const taskDates: Record<string, number> = {};
+    tasks.forEach(t => {
+        const d = new Date(t.createdAt).toISOString().split('T')[0];
+        taskDates[d] = (taskDates[d] || 0) + 1;
+    });
+
+    let maxCount = 0;
+
+    for (let w = 0; w < weeks; w++) {
+      for (let d = 0; d < days; d++) {
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + (w * 7) + d);
+        
+        // Stop if future
+        if (currentDate > today) continue;
+
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const count = taskDates[dateStr] || 0;
+        if (count > maxCount) maxCount = count;
+
+        mapData.push({
+          x: w,
+          y: d,
+          date: dateStr,
+          count,
+          dayIndex: d // 0 = Sun, 6 = Sat
+        });
+      }
+    }
+    return { mapData, maxCount };
+  };
+
+  const { mapData: heatmapData, maxCount: heatmapMax } = generateHeatmapData();
+
 
   // -- SVG Helpers --
   
@@ -154,6 +199,72 @@ const Reports: React.FC<ReportsProps> = ({ tasks }) => {
                 </div>
               ))}
             </div>
+         </div>
+      </div>
+
+      {/* Activity Heatmap */}
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+         <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Activity Heatmap</h3>
+            <div className="text-xs text-gray-400 flex items-center space-x-2">
+               <span>Less</span>
+               <div className="flex space-x-1">
+                 <div className="w-2.5 h-2.5 bg-gray-100 dark:bg-gray-700 rounded-sm"></div>
+                 <div className="w-2.5 h-2.5 bg-primary-200 dark:bg-primary-900 rounded-sm"></div>
+                 <div className="w-2.5 h-2.5 bg-primary-400 dark:bg-primary-700 rounded-sm"></div>
+                 <div className="w-2.5 h-2.5 bg-primary-600 dark:bg-primary-500 rounded-sm"></div>
+               </div>
+               <span>More</span>
+            </div>
+         </div>
+         
+         <div className="w-full overflow-x-auto custom-scrollbar pb-2">
+           <div className="min-w-[700px]">
+             <svg width="100%" height="130" viewBox="0 0 840 110" preserveAspectRatio="xMinYMin meet">
+               <g transform="translate(20, 20)">
+                 {/* Week Labels */}
+                 {Array.from({length: 12}).map((_, i) => (
+                    <text key={i} x={i * 70} y="-8" className="text-[10px] fill-gray-400" textAnchor="start">
+                       {new Date(new Date().setMonth(new Date().getMonth() - (11 - i))).toLocaleString('default', {month: 'short'})}
+                    </text>
+                 ))}
+                 
+                 {/* Day Labels */}
+                 <text x="-10" y="24" className="text-[9px] fill-gray-400" textAnchor="end">Mon</text>
+                 <text x="-10" y="54" className="text-[9px] fill-gray-400" textAnchor="end">Wed</text>
+                 <text x="-10" y="84" className="text-[9px] fill-gray-400" textAnchor="end">Fri</text>
+                 
+                 {/* Cells */}
+                 {heatmapData.map((cell, idx) => {
+                    const cellSize = 13;
+                    const gap = 3;
+                    
+                    let colorClass = "fill-gray-100 dark:fill-gray-700";
+                    if (cell.count > 0) {
+                      // Calculate intensity relative to max (or a hardcoded realistic max like 5)
+                      const intensity = Math.min(cell.count / Math.max(heatmapMax, 3), 1);
+                      if (intensity < 0.3) colorClass = "fill-primary-200 dark:fill-primary-900";
+                      else if (intensity < 0.6) colorClass = "fill-primary-400 dark:fill-primary-700";
+                      else colorClass = "fill-primary-600 dark:fill-primary-500";
+                    }
+
+                    return (
+                       <rect 
+                         key={idx}
+                         x={cell.x * (cellSize + gap)}
+                         y={cell.y * (cellSize + gap)}
+                         width={cellSize}
+                         height={cellSize}
+                         rx="2"
+                         className={`${colorClass} transition-all duration-200 hover:stroke-2 hover:stroke-gray-300 dark:hover:stroke-gray-500 cursor-pointer`}
+                       >
+                         <title>{`${cell.date}: ${cell.count} task${cell.count !== 1 ? 's' : ''}`}</title>
+                       </rect>
+                    );
+                 })}
+               </g>
+             </svg>
+           </div>
          </div>
       </div>
 
