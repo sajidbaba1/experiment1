@@ -6,15 +6,33 @@ interface TaskBoardProps {
   tasks: Task[];
   onTaskClick: (task: Task) => void;
   onTaskMove: (taskId: string, status: TaskStatus) => void;
+  searchQuery: string;
 }
 
 type SortOption = 'priority' | 'dueDate' | 'created';
 
-const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskClick, onTaskMove }) => {
+const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskClick, onTaskMove, searchQuery }) => {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('priority');
+  const [filterTag, setFilterTag] = useState<string>('all');
   
   const columns = Object.values(TaskStatus);
+
+  // Get all unique tags from tasks
+  const allTags = Array.from(new Set(tasks.flatMap(t => t.tags || [])));
+
+  // Filter Tasks
+  const filteredTasks = tasks.filter(task => {
+    // Search Query
+    const matchesSearch = 
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      task.description.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Tag Filter
+    const matchesTag = filterTag === 'all' || (task.tags && task.tags.includes(filterTag));
+    
+    return matchesSearch && matchesTag;
+  });
 
   // Sorting Logic
   const getSortedTasks = (taskList: Task[]) => {
@@ -35,16 +53,12 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskClick, onTaskMove })
   };
 
   const getTasksByStatus = (status: TaskStatus) => {
-    return getSortedTasks(tasks.filter(task => task.status === status));
+    return getSortedTasks(filteredTasks.filter(task => task.status === status));
   };
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     setDraggedTaskId(taskId);
     e.dataTransfer.effectAllowed = 'move';
-    // Transparent drag image
-    // const img = new Image();
-    // img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    // e.dataTransfer.setDragImage(img, 0, 0);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -63,7 +77,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskClick, onTaskMove })
   return (
     <div className="flex flex-col h-full">
        {/* Sorting & Filter Toolbar */}
-       <div className="px-4 sm:px-6 py-3 flex items-center justify-between shrink-0">
+       <div className="px-4 sm:px-6 py-3 flex flex-wrap items-center gap-4 shrink-0 border-b border-transparent">
           <div className="flex items-center space-x-2">
              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sort by:</span>
              <div className="relative inline-block text-left">
@@ -78,10 +92,26 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskClick, onTaskMove })
                 </select>
              </div>
           </div>
+
+          <div className="flex items-center space-x-2">
+             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tag:</span>
+             <div className="relative inline-block text-left">
+                <select 
+                  value={filterTag}
+                  onChange={(e) => setFilterTag(e.target.value)}
+                  className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 dark:text-gray-200 cursor-pointer"
+                >
+                   <option value="all">All Tags</option>
+                   {allTags.map(tag => (
+                     <option key={tag} value={tag}>{tag}</option>
+                   ))}
+                </select>
+             </div>
+          </div>
        </div>
 
        {/* Board */}
-       <div className="flex-1 p-4 sm:p-6 pt-0 overflow-x-auto overflow-y-hidden">
+       <div className="flex-1 p-4 sm:p-6 pt-0 overflow-x-auto overflow-y-hidden mt-4">
          {/* Responsive Container: Allows snapping on mobile, free scroll on desktop */}
          <div className="flex h-full space-x-4 sm:space-x-6 w-full snap-x snap-mandatory sm:snap-none pb-2">
             {columns.map((status) => {
@@ -100,11 +130,6 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskClick, onTaskMove })
                       <span className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors">
                         {columnTasks.length}
                       </span>
-                    </div>
-                    <div className="flex space-x-1">
-                       <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
-                       </button>
                     </div>
                   </div>
 

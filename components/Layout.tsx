@@ -11,6 +11,8 @@ interface LayoutProps {
   setColorTheme: (theme: string) => void;
   currentView: ViewType;
   onViewChange: (view: ViewType) => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }
 
 const Layout: React.FC<LayoutProps> = ({ 
@@ -21,7 +23,9 @@ const Layout: React.FC<LayoutProps> = ({
   colorTheme,
   setColorTheme,
   currentView,
-  onViewChange
+  onViewChange,
+  searchQuery,
+  onSearchChange
 }) => {
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -172,11 +176,13 @@ const Layout: React.FC<LayoutProps> = ({
 
           <div className="flex items-center space-x-2 sm:space-x-4">
              {/* Search */}
-             <div className="hidden sm:block relative">
+             <div className="relative">
                <input 
                  type="text" 
-                 placeholder="Search..." 
-                 className="w-40 lg:w-64 pl-9 pr-4 py-1.5 bg-gray-100 dark:bg-gray-700 border-transparent focus:bg-white dark:focus:bg-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-transparent rounded-lg text-sm transition-all text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                 value={searchQuery}
+                 onChange={(e) => onSearchChange(e.target.value)}
+                 placeholder="Search tasks..." 
+                 className="w-32 sm:w-64 pl-9 pr-4 py-1.5 bg-gray-100 dark:bg-gray-700 border-transparent focus:bg-white dark:focus:bg-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-transparent rounded-lg text-sm transition-all text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                />
                <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 absolute left-3 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
              </div>

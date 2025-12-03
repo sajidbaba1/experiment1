@@ -18,6 +18,9 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
   const [priority, setPriority] = useState<TaskPriority>(TaskPriority.MEDIUM);
   const [dueDate, setDueDate] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [suggestedSubtasks, setSuggestedSubtasks] = useState<string[]>([]);
   
@@ -32,6 +35,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       setStatus(task.status);
       setPriority(task.priority);
       setDueDate(task.dueDate);
+      setTags(task.tags || []);
       setSuggestedSubtasks([]);
     } else {
       // Reset for new task
@@ -40,9 +44,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       setStatus(TaskStatus.TODO);
       setPriority(TaskPriority.MEDIUM);
       setDueDate(new Date().toISOString().split('T')[0]);
+      setTags([]);
       setSuggestedSubtasks([]);
     }
     setNewComment('');
+    setTagInput('');
   }, [task, isOpen]);
 
   // Scroll to bottom of comments when task changes or new comment added
@@ -65,6 +71,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       status,
       priority,
       dueDate,
+      tags
     });
     onClose();
   };
@@ -97,6 +104,21 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       e.preventDefault();
       handlePostComment();
     }
+  };
+
+  // Tag Handlers
+  const handleAddTag = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && tagInput.trim()) {
+      e.preventDefault();
+      if (!tags.includes(tagInput.trim())) {
+        setTags([...tags, tagInput.trim()]);
+      }
+      setTagInput('');
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
   };
 
   return (
@@ -174,6 +196,29 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
               />
             </div>
           </div>
+          
+          {/* Tags Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tags</label>
+            <div className="flex flex-wrap items-center gap-2 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus-within:ring-2 focus-within:ring-primary-500">
+               {tags.map((tag, idx) => (
+                 <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200">
+                   {tag}
+                   <button onClick={() => removeTag(tag)} className="ml-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 focus:outline-none">
+                     ×
+                   </button>
+                 </span>
+               ))}
+               <input 
+                 type="text" 
+                 value={tagInput}
+                 onChange={(e) => setTagInput(e.target.value)}
+                 onKeyDown={handleAddTag}
+                 placeholder={tags.length === 0 ? "Add tags (press Enter)..." : ""}
+                 className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-white placeholder-gray-400 min-w-[120px]"
+               />
+            </div>
+          </div>
 
           {/* Description + AI */}
           <div className="relative">
@@ -203,7 +248,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow outline-none text-sm text-gray-700 dark:text-gray-300 resize-none bg-gray-50 dark:bg-gray-700"
-              placeholder="Describe the task details..."
+              placeholder="Describe task details... Use '- [ ]' for checklist items."
             />
             {suggestedSubtasks.length > 0 && (
                 <div className="mt-3 bg-purple-50 dark:bg-purple-900/20 p-3 rounded-md border border-purple-100 dark:border-purple-800">

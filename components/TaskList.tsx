@@ -4,11 +4,12 @@ import { Task, TaskStatus, TaskPriority } from '../types';
 interface TaskListProps {
   tasks: Task[];
   onTaskClick: (task: Task) => void;
+  searchQuery: string;
 }
 
 type SortField = 'title' | 'status' | 'priority' | 'dueDate' | 'assignee';
 
-const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick }) => {
+const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, searchQuery }) => {
   const [sortField, setSortField] = useState<SortField>('dueDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -21,7 +22,12 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick }) => {
     }
   };
 
-  const sortedTasks = [...tasks].sort((a, b) => {
+  const filteredTasks = tasks.filter(task => 
+    task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    task.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
     let result = 0;
     if (sortField === 'title') result = a.title.localeCompare(b.title);
     if (sortField === 'status') result = a.status.localeCompare(b.status);
@@ -130,7 +136,7 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick }) => {
              </table>
              {sortedTasks.length === 0 && (
                 <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                  No tasks found.
+                  No tasks found matching "{searchQuery}".
                 </div>
              )}
           </div>
