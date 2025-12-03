@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+export type ViewType = 'board' | 'list' | 'reports';
+
 interface LayoutProps {
   children: React.ReactNode;
   onNewTask: () => void;
@@ -7,6 +9,8 @@ interface LayoutProps {
   toggleDarkMode: () => void;
   colorTheme: string;
   setColorTheme: (theme: string) => void;
+  currentView: ViewType;
+  onViewChange: (view: ViewType) => void;
 }
 
 const Layout: React.FC<LayoutProps> = ({ 
@@ -15,7 +19,9 @@ const Layout: React.FC<LayoutProps> = ({
   darkMode,
   toggleDarkMode,
   colorTheme,
-  setColorTheme
+  setColorTheme,
+  currentView,
+  onViewChange
 }) => {
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -40,21 +46,39 @@ const Layout: React.FC<LayoutProps> = ({
     { id: 'pink', name: 'Berry', color: '#ec4899' },
   ];
 
+  const handleNavClick = (view: ViewType) => {
+    onViewChange(view);
+    setIsMobileMenuOpen(false);
+  }
+
   const NavLinks = () => (
     <>
-      <a href="#" className="flex items-center px-4 py-3 text-sm font-medium rounded-lg bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400 group relative transition-colors">
-         <svg className="w-5 h-5 mr-3 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+      <button 
+        onClick={() => handleNavClick('board')}
+        className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg mb-1 transition-all duration-200 group relative ${currentView === 'board' ? 'bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white'}`}
+      >
+         <svg className={`w-5 h-5 mr-3 transition-colors ${currentView === 'board' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
          Board View
-         <span className="absolute right-4 w-2 h-2 rounded-full bg-primary-600 dark:bg-primary-400"></span>
-      </a>
-      <a href="#" className="flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white group transition-colors">
-         <svg className="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+         {currentView === 'board' && <span className="absolute right-4 w-1.5 h-1.5 rounded-full bg-primary-600 dark:bg-primary-400"></span>}
+      </button>
+      
+      <button 
+        onClick={() => handleNavClick('list')}
+        className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg mb-1 transition-all duration-200 group relative ${currentView === 'list' ? 'bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white'}`}
+      >
+         <svg className={`w-5 h-5 mr-3 transition-colors ${currentView === 'list' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
          List View
-      </a>
-      <a href="#" className="flex items-center px-4 py-3 text-sm font-medium rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white group transition-colors">
-         <svg className="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+         {currentView === 'list' && <span className="absolute right-4 w-1.5 h-1.5 rounded-full bg-primary-600 dark:bg-primary-400"></span>}
+      </button>
+
+      <button 
+        onClick={() => handleNavClick('reports')}
+        className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg mb-1 transition-all duration-200 group relative ${currentView === 'reports' ? 'bg-primary-50 dark:bg-primary-500/10 text-primary-700 dark:text-primary-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white'}`}
+      >
+         <svg className={`w-5 h-5 mr-3 transition-colors ${currentView === 'reports' ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
          Reports
-      </a>
+         {currentView === 'reports' && <span className="absolute right-4 w-1.5 h-1.5 rounded-full bg-primary-600 dark:bg-primary-400"></span>}
+      </button>
     </>
   );
 
@@ -135,19 +159,19 @@ const Layout: React.FC<LayoutProps> = ({
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" /></svg>
              </button>
 
-             {/* Mobile Brand (visible only when menu button is there) */}
+             {/* Mobile Brand */}
              <div className="md:hidden font-bold text-lg text-gray-900 dark:text-white">TaskFlow</div>
 
-             {/* Breadcrumbs (Hidden on Mobile) */}
+             {/* Breadcrumbs */}
              <div className="hidden md:flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
                <span className="hover:text-gray-900 dark:hover:text-white cursor-pointer">Workspace</span>
                <svg className="w-4 h-4 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-               <span className="text-gray-900 dark:text-white">Engineering</span>
+               <span className="text-gray-900 dark:text-white capitalize">{currentView}</span>
              </div>
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-4">
-             {/* Search - Collapsed on Mobile could be implemented, for now just hidden on very small screens */}
+             {/* Search */}
              <div className="hidden sm:block relative">
                <input 
                  type="text" 
@@ -211,7 +235,7 @@ const Layout: React.FC<LayoutProps> = ({
                )}
              </div>
 
-             {/* New Task Button - Text hidden on small mobile */}
+             {/* New Task Button */}
              <button 
                 onClick={onNewTask}
                 className="bg-gray-900 dark:bg-primary-600 hover:bg-gray-800 dark:hover:bg-primary-700 text-white text-sm font-medium py-2 px-3 sm:px-4 rounded-lg shadow-sm flex items-center transition-colors"

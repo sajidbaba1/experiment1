@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import Layout from './components/Layout';
+import Layout, { ViewType } from './components/Layout';
 import TaskBoard from './components/TaskBoard';
+import TaskList from './components/TaskList';
+import Reports from './components/Reports';
 import TaskModal from './components/TaskModal';
 import { Task, TaskStatus, TaskPriority, Comment } from './types';
 
@@ -62,6 +64,7 @@ function App() {
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentTask, setCurrentTask] = useState<Task | undefined>(undefined);
+  const [currentView, setCurrentView] = useState<ViewType>('board');
   
   // Theme State
   const [darkMode, setDarkMode] = useState(() => {
@@ -181,12 +184,27 @@ function App() {
       toggleDarkMode={() => setDarkMode(!darkMode)}
       colorTheme={colorTheme}
       setColorTheme={setColorTheme}
+      currentView={currentView}
+      onViewChange={setCurrentView}
     >
-      <TaskBoard 
-        tasks={tasks} 
-        onTaskClick={handleEditTask} 
-        onTaskMove={handleTaskMove}
-      />
+      {currentView === 'board' && (
+        <TaskBoard 
+          tasks={tasks} 
+          onTaskClick={handleEditTask} 
+          onTaskMove={handleTaskMove}
+        />
+      )}
+      
+      {currentView === 'list' && (
+        <TaskList 
+          tasks={tasks}
+          onTaskClick={handleEditTask}
+        />
+      )}
+
+      {currentView === 'reports' && (
+        <Reports tasks={tasks} />
+      )}
       
       <TaskModal
         isOpen={isModalOpen}
