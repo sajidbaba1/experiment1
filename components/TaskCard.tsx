@@ -15,10 +15,45 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
   };
 
   // Calculate Subtask Progress from Description Markdown
-  // Looks for "- [ ]" (incomplete) and "- [x]" (complete)
   const totalSubtasks = (task.description.match(/- \[[ x]\]/g) || []).length;
   const completedSubtasks = (task.description.match(/- \[x\]/g) || []).length;
   const progressPercent = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
+
+  // Feature 10: Relative Time Helper
+  const getRelativeTime = (timestamp: number) => {
+    const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+    const diffInSeconds = (timestamp - Date.now()) / 1000;
+    const diffInDays = Math.round(diffInSeconds / 86400);
+    
+    if (Math.abs(diffInDays) > 0) return rtf.format(diffInDays, 'day');
+    return 'Today';
+  };
+
+  // Feature 8: Copy ID
+  const handleCopyId = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(task.id);
+  };
+
+  // Feature 7: Dynamic Tag Color
+  const getTagColor = (tag: string) => {
+    // Simple hash function to generate a color index
+    let hash = 0;
+    for (let i = 0; i < tag.length; i++) {
+      hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colors = [
+      'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+      'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+      'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+      'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+    ];
+    return colors[Math.abs(hash) % colors.length];
+  };
 
   return (
     <div 
@@ -45,7 +80,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
       {task.tags && task.tags.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {task.tags.map((tag, i) => (
-             <span key={i} className="px-1.5 py-0.5 rounded text-[10px] bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 font-medium border border-gray-200 dark:border-gray-600">
+             <span key={i} className={`px-1.5 py-0.5 rounded text-[10px] font-medium border border-transparent ${getTagColor(tag)}`}>
                {tag}
              </span>
           ))}
@@ -68,10 +103,18 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
         </div>
       )}
 
+      {/* Feature 6: Estimated Time Badge */}
+      {task.estimatedTime && (
+         <div className="flex items-center text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+            <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            {task.estimatedTime}h est.
+         </div>
+      )}
+
       <div className="flex justify-between items-center pt-2 mt-auto border-t border-gray-100 dark:border-gray-700">
         <div className="flex items-center space-x-2">
            {/* Assignee Avatar */}
-           <div className="h-6 w-6 rounded-full ring-2 ring-white dark:ring-gray-800 bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-white text-[10px] font-bold">
+           <div className="h-6 w-6 rounded-full ring-2 ring-white dark:ring-gray-800 bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-white text-[10px] font-bold" title={task.assignee || 'Unassigned'}>
              {task.assignee ? task.assignee.substring(0, 2).toUpperCase() : 'UN'}
            </div>
            
@@ -83,8 +126,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
              </div>
            )}
         </div>
-        <div className="text-xs text-gray-400 dark:text-gray-500 font-mono">
-          #{task.id.substring(0, 4)}
+        <div 
+          onClick={handleCopyId}
+          className="text-xs text-gray-300 dark:text-gray-600 font-mono hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+          title="Click to copy ID"
+        >
+          {getRelativeTime(task.createdAt)}
         </div>
       </div>
     </div>

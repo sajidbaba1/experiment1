@@ -7,19 +7,33 @@ interface TaskBoardProps {
   onTaskClick: (task: Task) => void;
   onTaskMove: (taskId: string, status: TaskStatus) => void;
   searchQuery: string;
+  onQuickAddTask: (title: string, status: TaskStatus) => void;
+  onClearDoneTasks: () => void;
 }
 
 type SortOption = 'priority' | 'dueDate' | 'created';
 
-const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskClick, onTaskMove, searchQuery }) => {
+const TaskBoard: React.FC<TaskBoardProps> = ({ 
+  tasks, 
+  onTaskClick, 
+  onTaskMove, 
+  searchQuery, 
+  onQuickAddTask,
+  onClearDoneTasks 
+}) => {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('priority');
   const [filterTag, setFilterTag] = useState<string>('all');
+  const [filterAssignee, setFilterAssignee] = useState<string>('all');
   
+  // Quick Add State
+  const [quickAddTitles, setQuickAddTitles] = useState<Record<string, string>>({});
+
   const columns = Object.values(TaskStatus);
 
-  // Get all unique tags from tasks
+  // Get all unique tags and assignees
   const allTags = Array.from(new Set(tasks.flatMap(t => t.tags || [])));
+  const allAssignees = Array.from(new Set(tasks.map(t => t.assignee || 'Unassigned')));
 
   // Filter Tasks
   const filteredTasks = tasks.filter(task => {
@@ -31,7 +45,10 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskClick, onTaskMove, s
     // Tag Filter
     const matchesTag = filterTag === 'all' || (task.tags && task.tags.includes(filterTag));
     
-    return matchesSearch && matchesTag;
+    // Feature 5: Assignee Filter
+    const matchesAssignee = filterAssignee === 'all' || (task.assignee || 'Unassigned') === filterAssignee;
+
+    return matchesSearch && matchesTag && matchesAssignee;
   });
 
   // Sorting Logic
@@ -74,20 +91,33 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskClick, onTaskMove, s
     }
   };
 
+  // Feature 4: Quick Add Logic
+  const handleQuickAddChange = (status: string, value: string) => {
+    setQuickAddTitles(prev => ({...prev, [status]: value}));
+  };
+
+  const handleQuickAddSubmit = (status: TaskStatus) => {
+    const title = quickAddTitles[status]?.trim();
+    if (title) {
+      onQuickAddTask(title, status);
+      setQuickAddTitles(prev => ({...prev, [status]: ''}));
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
        {/* Sorting & Filter Toolbar */}
        <div className="px-4 sm:px-6 py-3 flex flex-wrap items-center gap-4 shrink-0 border-b border-transparent">
           <div className="flex items-center space-x-2">
-             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sort by:</span>
+             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sort:</span>
              <div className="relative inline-block text-left">
                 <select 
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
                   className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 dark:text-gray-200 cursor-pointer"
                 >
-                   <option value="priority">Highest Priority</option>
-                   <option value="dueDate">Due Date (Earliest)</option>
+                   <option value="priority">Priority</option>
+                   <option value="dueDate">Due Date</option>
                    <option value="created">Recently Added</option>
                 </select>
              </div>
@@ -104,6 +134,23 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskClick, onTaskMove, s
                    <option value="all">All Tags</option>
                    {allTags.map(tag => (
                      <option key={tag} value={tag}>{tag}</option>
+                   ))}
+                </select>
+             </div>
+          </div>
+
+          {/* Feature 5: Assignee Filter */}
+          <div className="flex items-center space-x-2">
+             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Assignee:</span>
+             <div className="relative inline-block text-left">
+                <select 
+                  value={filterAssignee}
+                  onChange={(e) => setFilterAssignee(e.target.value)}
+                  className="block w-full pl-3 pr-8 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 dark:text-gray-200 cursor-pointer"
+                >
+                   <option value="all">All People</option>
+                   {allAssignees.map(a => (
+                     <option key={a} value={a}>{a}</option>
                    ))}
                 </select>
              </div>
@@ -131,6 +178,16 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskClick, onTaskMove, s
                         {columnTasks.length}
                       </span>
                     </div>
+                    {/* Feature 2: Clear Done Button */}
+                    {status === TaskStatus.DONE && columnTasks.length > 0 && (
+                      <button 
+                        onClick={onClearDoneTasks}
+                        className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                        title="Clear completed tasks"
+                      >
+                        Clear All
+                      </button>
+                    )}
                   </div>
 
                   {/* Column Content */}
@@ -153,11 +210,31 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskClick, onTaskMove, s
                       ))
                     )}
                   </div>
+                  
+                  {/* Feature 4: Quick Add Input */}
+                  <div className="mt-3 px-1">
+                    <div className="relative group">
+                       <input 
+                         type="text" 
+                         value={quickAddTitles[status] || ''}
+                         onChange={(e) => handleQuickAddChange(status, e.target.value)}
+                         onKeyDown={(e) => e.key === 'Enter' && handleQuickAddSubmit(status)}
+                         placeholder=" + Quick Add..."
+                         className="w-full bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-primary-500 focus:ring-0 text-sm py-1 px-1 transition-colors outline-none text-gray-700 dark:text-gray-300 placeholder-gray-400"
+                       />
+                       <button 
+                         onClick={() => handleQuickAddSubmit(status)}
+                         className={`absolute right-0 top-1 text-primary-600 dark:text-primary-400 hover:text-primary-800 ${quickAddTitles[status] ? 'opacity-100' : 'opacity-0'} transition-opacity`}
+                       >
+                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                       </button>
+                    </div>
+                  </div>
                 </div>
               );
             })}
             
-            {/* Spacer for mobile to allow scrolling to the very end comfortably */}
+            {/* Spacer for mobile */}
             <div className="w-4 sm:hidden flex-shrink-0"></div>
          </div>
       </div>

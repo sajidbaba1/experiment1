@@ -29,6 +29,7 @@ export interface Task {
   tags: string[];
   comments?: Comment[];
   createdAt: number;
+  estimatedTime?: number; // New field for Feature 6
 }
 
 export interface CreateTaskDTO {

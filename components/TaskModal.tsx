@@ -9,10 +9,11 @@ interface TaskModalProps {
   onSave: (task: Partial<Task>) => void;
   onDelete?: (id: string) => void;
   onAddComment?: (taskId: string, text: string) => void;
+  onDuplicate?: (task: Task) => void; // Feature 1
   task?: Task;
 }
 
-const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete, onAddComment, task }) => {
+const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete, onAddComment, onDuplicate, task }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
@@ -20,6 +21,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
   const [dueDate, setDueDate] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [estimatedTime, setEstimatedTime] = useState<number | ''>(''); // Feature 6
   
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [suggestedSubtasks, setSuggestedSubtasks] = useState<string[]>([]);
@@ -36,6 +38,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       setPriority(task.priority);
       setDueDate(task.dueDate);
       setTags(task.tags || []);
+      setEstimatedTime(task.estimatedTime || '');
       setSuggestedSubtasks([]);
     } else {
       // Reset for new task
@@ -45,6 +48,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       setPriority(TaskPriority.MEDIUM);
       setDueDate(new Date().toISOString().split('T')[0]);
       setTags([]);
+      setEstimatedTime('');
       setSuggestedSubtasks([]);
     }
     setNewComment('');
@@ -71,7 +75,8 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
       status,
       priority,
       dueDate,
-      tags
+      tags,
+      estimatedTime: estimatedTime === '' ? undefined : Number(estimatedTime)
     });
     onClose();
   };
@@ -135,9 +140,21 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
             {task ? 'Edit Task' : 'New Task'}
           </h2>
-          <button onClick={onClose} className="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
+          <div className="flex items-center space-x-2">
+            {/* Feature 1: Duplicate Button */}
+            {task && onDuplicate && (
+               <button 
+                 onClick={() => onDuplicate(task)}
+                 className="p-1 rounded text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-gray-700 dark:hover:text-primary-400 transition-colors"
+                 title="Duplicate Task"
+               >
+                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+               </button>
+            )}
+            <button onClick={onClose} className="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
         </div>
 
         {/* Body */}
@@ -156,7 +173,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
              {/* Status */}
              <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
@@ -193,6 +210,20 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, onDelete
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm text-gray-600 dark:text-gray-300"
+              />
+            </div>
+
+            {/* Feature 6: Estimated Time */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Est. Time (Hours)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={estimatedTime}
+                onChange={(e) => setEstimatedTime(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder="e.g. 4.5"
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm text-gray-600 dark:text-gray-300 placeholder-gray-400"
               />
             </div>
           </div>

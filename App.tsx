@@ -22,6 +22,7 @@ const INITIAL_TASKS: Task[] = [
       { id: 'c1', text: 'I found some inconsistencies in the mobile view.', author: 'Sam', createdAt: Date.now() - 10000000 }
     ],
     createdAt: Date.now(),
+    estimatedTime: 4,
   },
   {
     id: '2',
@@ -34,6 +35,7 @@ const INITIAL_TASKS: Task[] = [
     tags: ['Dev', 'Backend'],
     comments: [],
     createdAt: Date.now(),
+    estimatedTime: 8,
   },
   {
     id: '3',
@@ -46,6 +48,7 @@ const INITIAL_TASKS: Task[] = [
     tags: ['Docs'],
     comments: [],
     createdAt: Date.now(),
+    estimatedTime: 2,
   },
     {
     id: '4',
@@ -58,6 +61,7 @@ const INITIAL_TASKS: Task[] = [
     tags: ['Marketing'],
     comments: [],
     createdAt: Date.now(),
+    estimatedTime: 5,
   },
 ];
 
@@ -124,6 +128,8 @@ function App() {
     setToast({ message, type });
   };
 
+  // --- Actions ---
+
   const handleCreateTask = () => {
     setCurrentTask(undefined);
     setIsModalOpen(true);
@@ -151,7 +157,8 @@ function App() {
         dueDate: taskData.dueDate || new Date().toISOString(),
         tags: taskData.tags || [],
         comments: [],
-        assignee: 'You',
+        assignee: 'You', // Default assignee
+        estimatedTime: taskData.estimatedTime
       };
       setTasks(prev => [...prev, newTask]);
       showToast('New task created', 'success');
@@ -191,6 +198,74 @@ function App() {
     }
   };
 
+  // Feature 1: Duplicate Task
+  const handleDuplicateTask = (task: Task) => {
+    const newTask: Task = {
+      ...task,
+      id: Date.now().toString(),
+      title: `${task.title} (Copy)`,
+      createdAt: Date.now(),
+      comments: [], // Don't copy comments
+    };
+    setTasks(prev => [...prev, newTask]);
+    showToast('Task duplicated');
+    setIsModalOpen(false);
+  };
+
+  // Feature 2: Clear Done
+  const handleClearDoneTasks = () => {
+    if (window.confirm('Are you sure you want to remove all completed tasks?')) {
+      setTasks(prev => prev.filter(t => t.status !== TaskStatus.DONE));
+      showToast('Completed tasks cleared', 'info');
+    }
+  };
+
+  // Feature 3: Export CSV
+  const handleExportCSV = () => {
+    const headers = ['ID', 'Title', 'Description', 'Status', 'Priority', 'Due Date', 'Assignee', 'Estimated Time', 'Created At'];
+    const rows = tasks.map(t => [
+      t.id,
+      `"${t.title.replace(/"/g, '""')}"`, // Escape quotes
+      `"${t.description.replace(/"/g, '""')}"`,
+      t.status,
+      t.priority,
+      t.dueDate,
+      t.assignee || '',
+      t.estimatedTime || '',
+      new Date(t.createdAt).toISOString()
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `taskflow_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Tasks exported to CSV');
+  };
+
+  // Feature 4: Quick Add
+  const handleQuickAddTask = (title: string, status: TaskStatus) => {
+    const newTask: Task = {
+      id: Date.now().toString(),
+      title,
+      description: '',
+      status,
+      priority: TaskPriority.MEDIUM,
+      dueDate: '',
+      tags: [],
+      comments: [],
+      createdAt: Date.now(),
+      assignee: 'You',
+    };
+    setTasks(prev => [...prev, newTask]);
+    showToast('Task added quickly', 'success');
+  };
+
   return (
     <Layout 
       onNewTask={handleCreateTask}
@@ -202,6 +277,7 @@ function App() {
       onViewChange={setCurrentView}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
+      onExportCSV={handleExportCSV}
     >
       {currentView === 'board' && (
         <TaskBoard 
@@ -209,6 +285,8 @@ function App() {
           onTaskClick={handleEditTask} 
           onTaskMove={handleTaskMove}
           searchQuery={searchQuery}
+          onQuickAddTask={handleQuickAddTask}
+          onClearDoneTasks={handleClearDoneTasks}
         />
       )}
       
@@ -229,6 +307,7 @@ function App() {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
+        onDuplicate={handleDuplicateTask}
         onAddComment={handleAddComment}
         task={currentTask}
       />

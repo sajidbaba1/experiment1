@@ -13,7 +13,16 @@ interface LayoutProps {
   onViewChange: (view: ViewType) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  onExportCSV: () => void;
 }
+
+const QUOTES = [
+  "The secret of getting ahead is getting started.",
+  "It always seems impossible until it's done.",
+  "Don't watch the clock; do what it does. Keep going.",
+  "The future depends on what you do today.",
+  "Focus on being productive instead of busy."
+];
 
 const Layout: React.FC<LayoutProps> = ({ 
   children, 
@@ -25,11 +34,18 @@ const Layout: React.FC<LayoutProps> = ({
   currentView,
   onViewChange,
   searchQuery,
-  onSearchChange
+  onSearchChange,
+  onExportCSV
 }) => {
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const themeMenuRef = useRef<HTMLDivElement>(null);
+  const [quote, setQuote] = useState("");
+
+  useEffect(() => {
+    // Feature 9: Random Quote
+    setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+  }, []);
 
   // Close theme menu when clicking outside
   useEffect(() => {
@@ -83,6 +99,15 @@ const Layout: React.FC<LayoutProps> = ({
          Reports
          {currentView === 'reports' && <span className="absolute right-4 w-1.5 h-1.5 rounded-full bg-primary-600 dark:bg-primary-400"></span>}
       </button>
+
+      {/* Feature 3: Export CSV Button */}
+      <button 
+        onClick={onExportCSV}
+        className="w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg mb-1 transition-all duration-200 group text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white"
+      >
+         <svg className="w-5 h-5 mr-3 text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+         Export CSV
+      </button>
     </>
   );
 
@@ -114,12 +139,9 @@ const Layout: React.FC<LayoutProps> = ({
             <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
                <NavLinks />
             </nav>
-            <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-               <div className="bg-gradient-to-r from-primary-600 to-indigo-600 rounded-xl p-4 text-white shadow-lg">
-                  <h4 className="font-bold text-sm mb-1">Upgrade to Pro</h4>
-                  <p className="text-xs text-primary-100 mb-3">Get unlimited tasks and AI insights.</p>
-                  <button className="w-full py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-xs font-bold rounded shadow transition-colors">Upgrade Now</button>
-               </div>
+            {/* Feature 9: Quote Widget */}
+            <div className="p-4 bg-gray-50 dark:bg-gray-700/30 m-4 rounded-xl">
+               <p className="text-xs italic text-gray-600 dark:text-gray-400">"{quote}"</p>
             </div>
          </div>
       </div>
@@ -138,6 +160,17 @@ const Layout: React.FC<LayoutProps> = ({
         <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
            <NavLinks />
         </nav>
+
+        {/* Feature 9: Quote Widget */}
+        <div className="px-4 pb-4">
+            <div className="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-700">
+               <div className="flex items-center mb-2">
+                 <svg className="w-3 h-3 text-primary-500 mr-1" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C19.5693 16 20.017 15.5523 20.017 15V9C20.017 8.44772 19.5693 8 19.017 8H15.017C14.4647 8 14.017 8.44772 14.017 9V11C14.017 11.5523 13.5693 12 13.017 12H12.017V5H22.017V15C22.017 18.3137 19.3307 21 16.017 21H14.017ZM5.0166 21L5.0166 18C5.0166 16.8954 5.91203 16 7.0166 16H10.0166C10.5689 16 11.0166 15.5523 11.0166 15V9C11.0166 8.44772 10.5689 8 10.0166 8H6.0166C5.46432 8 5.0166 8.44772 5.0166 9V11C5.0166 11.5523 4.56889 12 4.0166 12H3.0166V5H13.0166V15C13.0166 18.3137 10.3303 21 7.0166 21H5.0166Z" /></svg>
+                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Daily Wisdom</span>
+               </div>
+               <p className="text-xs italic text-gray-600 dark:text-gray-400 leading-relaxed">"{quote}"</p>
+            </div>
+        </div>
 
         <div className="p-4 border-t border-gray-100 dark:border-gray-700">
            <div className="bg-gradient-to-r from-primary-600 to-indigo-600 rounded-xl p-4 text-white shadow-lg">
