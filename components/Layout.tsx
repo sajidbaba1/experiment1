@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import InviteModal from './InviteModal';
 import AiAssistant from './AiAssistant';
 import { Task } from '../types';
 import { api } from '../services/api';
@@ -56,6 +57,7 @@ const Layout: React.FC<LayoutProps> = ({
 }) => {
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const themeMenuRef = useRef<HTMLDivElement>(null);
   const [quote, setQuote] = useState("");
@@ -421,6 +423,16 @@ const Layout: React.FC<LayoutProps> = ({
               </div>
 
               <button
+                onClick={() => setIsInviteModalOpen(true)}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+                title="Invite Member"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+              </button>
+
+              <button
                 onClick={onNewTask}
                 className="bg-gray-900 dark:bg-primary-600 hover:bg-gray-800 dark:hover:bg-primary-700 text-white text-sm font-medium py-2 px-3 sm:px-4 rounded-lg shadow-sm flex items-center transition-colors"
               >
@@ -460,6 +472,7 @@ const Layout: React.FC<LayoutProps> = ({
             </button>
           )}
         </div>
+        <InviteModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} />
       </main>
     </div>
   );

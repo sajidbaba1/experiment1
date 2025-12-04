@@ -146,4 +146,13 @@ export const api = {
         if (!response.ok) throw new Error('Failed to update sticky note');
         return response.json();
     },
+
+    inviteMember: async (email: string): Promise<void> => {
+        const response = await fetch(`${API_BASE}/invite`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        if (!response.ok) throw new Error('Failed to send invitation');
+    },
 };
