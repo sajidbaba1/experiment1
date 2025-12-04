@@ -23,8 +23,9 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose }) => {
             setMessage({ text: 'Invitation sent successfully!', type: 'success' });
             setEmail('');
             setTimeout(onClose, 2000);
-        } catch (error) {
-            setMessage({ text: 'Failed to send invitation.', type: 'error' });
+        } catch (error: any) {
+            const errorMsg = error.message || 'Failed to send invitation.';
+            setMessage({ text: errorMsg, type: 'error' });
         } finally {
             setIsSending(false);
         }

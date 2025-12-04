@@ -153,6 +153,9 @@ export const api = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email }),
         });
-        if (!response.ok) throw new Error('Failed to send invitation');
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to send invitation');
+        }
     },
 };
