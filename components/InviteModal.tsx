@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { inviteMember } from '../services/api';
+import { api } from '../services/api';
 import Button from './Button';
 
 interface InviteModalProps {
@@ -19,7 +19,7 @@ const InviteModal: React.FC<InviteModalProps> = ({ isOpen, onClose }) => {
         setIsSending(true);
         setMessage(null);
         try {
-            await inviteMember(email);
+            await api.inviteMember(email);
             setMessage({ text: 'Invitation sent successfully!', type: 'success' });
             setEmail('');
             setTimeout(onClose, 2000);
