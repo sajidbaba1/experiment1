@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Task, TaskPriority, TaskStatus, Comment } from "../types";
 
-const apiKey = process.env.API_KEY || 'AIzaSyB9yl8KozakSCYkYsygApYKtBdA1CXA9jM' ||AIzaSyB9yl8KozakSCYkYsygApYKtBdA1CXA9jM ;
+const apiKey = AIzaSyASJbJhZdKBZW-i9bNi1T8wo9uSg9p4Les || 'AIzaSyB9yl8KozakSCYkYsygApYKtBdA1CXA9jM' ||AIzaSyB9yl8KozakSCYkYsygApYKtBdA1CXA9jM ;
 const ai = new GoogleGenAI({ apiKey });
 
 // Helper to check if API key is present
